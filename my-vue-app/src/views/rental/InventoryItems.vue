@@ -127,39 +127,159 @@
                 <option value="Maintenance">Maintenance</option>
               </select>
             </div>
+
+            <!-- Adding view toggle button after the filters -->
+            <div class="flex items-center ml-4">
+              <label class="text-sm text-gray-600 mr-2">View:</label>
+              <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input 
+                  type="checkbox" 
+                  name="toggle" 
+                  id="toggle" 
+                  v-model="showTableView"
+                  class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                />
+                <label 
+                  for="toggle" 
+                  class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
+                ></label>
+              </div>
+              <span class="text-sm text-gray-700">{{ showTableView ? 'Table' : 'Card' }}</span>
+            </div>
           </div>
         </div>
         
         <div class="overflow-x-auto">
           <!-- Card Layout for Items -->
-          <div v-if="paginatedItems.length === 0" class="text-center py-8 text-gray-500">
+          <div v-if="!showTableView && paginatedItems.length === 0" class="text-center py-8 text-gray-500">
             No inventory items found matching your criteria.
           </div>
           
-          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+          <div v-if="!showTableView && paginatedItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
             <div 
               v-for="item in paginatedItems" 
               :key="item.id" 
               class="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 cursor-pointer hover:scale-[1.02]"
               @click="viewItemDetails(item)">
-              <div class="h-36 bg-gray-50 flex items-center justify-center relative">
-                <span class="text-gray-300 text-8xl font-light">{{ item.name[0] }}</span>
+              <div class="h-24 bg-gray-50 flex items-center justify-center relative">
+                <span class="text-gray-300 text-6xl font-light">{{ item.name[0] }}</span>
                 <span :class="getStatusClass(item.status)" class="absolute top-2 right-2 px-2 py-1 text-xs rounded-full font-medium">
                   {{ item.status }}
                 </span>
               </div>
-              <div class="p-4">
-                <h3 class="font-medium text-lg mb-1">{{ item.name }}</h3>
-                <p class="text-gray-600 text-sm mb-2">{{ item.category }}</p>
+              <div class="p-3">
+                <h3 class="font-medium text-base mb-1">{{ item.name }}</h3>
+                <p class="text-gray-600 text-xs mb-1">{{ item.category }}</p>
                 <div class="flex justify-between items-center">
                   <span class="font-bold text-blue-700">${{ item.rate }}/day</span>
                   <button 
                     @click.stop="viewItemDetails(item)" 
-                    class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">
                     View Details
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+          
+          <!-- Table View for Items -->
+          <div v-if="showTableView" class="mt-8 border-t border-gray-200 pt-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-semibold text-gray-800">Inventory Items Table</h3>
+              <div class="flex gap-2">
+                <button 
+                  @click="exportToCSV" 
+                  class="inline-flex items-center px-3 py-1 border border-gray-300 text-sm leading-5 font-medium rounded-md text-gray-700 bg-white hover:text-gray-500 hover:bg-gray-50 focus:outline-none transition ease-in-out duration-150">
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                  </svg>
+                  Export
+                </button>
+                <button 
+                  @click="printTable" 
+                  class="inline-flex items-center px-3 py-1 border border-gray-300 text-sm leading-5 font-medium rounded-md text-gray-700 bg-white hover:text-gray-500 hover:bg-gray-50 focus:outline-none transition ease-in-out duration-150">
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                  </svg>
+                  Print
+                </button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 border">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Daily Rate
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Acquisition Date
+                    </th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-gray-50 transition-colors duration-150 ease-in-out">
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {{ item.id }}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <span class="text-gray-500 text-sm font-medium">{{ item.name[0] }}</span>
+                        </div>
+                        <div class="ml-3">
+                          <div class="text-sm font-medium text-gray-900">{{ item.name }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {{ item.category }}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                      <span :class="getStatusClass(item.status)" class="px-2 py-1 text-xs rounded-full">
+                        {{ item.status }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      ${{ item.rate }}/day
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {{ item.acquisitionDate || 'Not specified' }}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                      <div class="flex space-x-2">
+                        <button @click.stop="viewItemDetails(item)" class="text-blue-600 hover:text-blue-900">
+                          View
+                        </button>
+                        <button v-if="item.status === 'Available'" class="text-green-600 hover:text-green-900">
+                          Rent
+                        </button>
+                        <button v-if="item.status === 'Rented'" class="text-purple-600 hover:text-purple-900">
+                          Return
+                        </button>
+                        <button v-if="item.status !== 'Maintenance'" class="text-yellow-600 hover:text-yellow-900">
+                          Maintain
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -312,35 +432,35 @@
     
     <!-- Add New Item Modal -->
     <div v-if="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full animate-modal-in">
-        <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4">
-          <h2 class="text-xl font-bold text-gray-800">Add New Inventory Item</h2>
+      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full animate-modal-in">
+        <div class="flex justify-between items-center border-b border-gray-200 px-3 py-2">
+          <h2 class="text-lg font-bold text-gray-800">Add New Item</h2>
           <button @click="closeAddModal" class="text-gray-400 hover:text-gray-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
-        <div class="p-6">
+        <div class="p-3">
           <form @submit.prevent="addNewItem">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Item Name</label>
                 <input 
                   v-model="newItem.name" 
                   type="text" 
                   required
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter item name"
                 />
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Category</label>
                 <select 
                   v-model="newItem.category" 
                   required
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="Power Tools">Power Tools</option>
                   <option value="Construction">Construction</option>
                   <option value="Landscaping">Landscaping</option>
@@ -349,68 +469,69 @@
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Status</label>
                 <select 
                   v-model="newItem.status" 
                   required
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="Available">Available</option>
                   <option value="Maintenance">Maintenance</option>
                 </select>
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Daily Rate ($)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Daily Rate ($)</label>
                 <input 
                   v-model.number="newItem.rate" 
                   type="number" 
                   min="0"
                   required
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Acquisition Date</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Acquisition Date</label>
                 <input 
                   v-model="newItem.acquisitionDate" 
                   type="date" 
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               
               <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Description</label>
                 <textarea 
                   v-model="newItem.description" 
-                  rows="3"
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="1"
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter item description"
                 ></textarea>
               </div>
               
               <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Features (comma separated)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-0.5">Features</label>
                 <input 
                   v-model="featuresInput" 
                   type="text" 
-                  class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Durable, Heavy Duty, Easy to Use"
                 />
+                <p class="mt-0.5 text-xs text-gray-500">Separate features with commas</p>
               </div>
             </div>
             
-            <div class="mt-8 flex justify-end gap-3">
+            <div class="mt-4 flex justify-end gap-2">
               <button 
                 type="button"
                 @click="closeAddModal" 
-                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
                 Cancel
               </button>
               <button 
                 type="submit" 
-                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                class="px-3 py-1 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
                 Add Item
               </button>
             </div>
@@ -523,7 +644,8 @@ export default {
         description: '',
         features: []
       },
-      featuresInput: ''
+      featuresInput: '',
+      showTableView: false
     };
   },
   computed: {
@@ -632,6 +754,7 @@ export default {
     updatePagination(items, pagination) {
       pagination.totalPages = Math.ceil(items.length / pagination.itemsPerPage) || 1;
       
+      // Ensure current page is within bounds
       if (pagination.currentPage > pagination.totalPages) {
         pagination.currentPage = 1;
       }
@@ -686,6 +809,93 @@ export default {
         features: []
       };
       this.featuresInput = '';
+    },
+    refreshData() {
+      this.fetchPageData();
+    },
+    exportToCSV() {
+      // Create CSV content
+      const headers = ['ID', 'Name', 'Category', 'Status', 'Daily Rate', 'Acquisition Date'];
+      const itemData = this.filteredItems.map(item => [
+        item.id,
+        item.name,
+        item.category,
+        item.status,
+        `$${item.rate}`,
+        item.acquisitionDate || ''
+      ]);
+      
+      // Combine headers and data
+      const csvContent = [
+        headers.join(','),
+        ...itemData.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `inventory-items-${timestamp}.csv`);
+      link.style.display = 'none';
+      
+      // Append to the document, trigger download, and clean up
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      
+      this.showSuccess('Inventory data exported successfully', 'Export Complete');
+    },
+    printTable() {
+      // Save current document body
+      const originalContents = document.body.innerHTML;
+      
+      // Create a print-friendly version of the table
+      let printContents = '<h2 style="text-align: center; margin-bottom: 20px;">Inventory Items</h2>';
+      printContents += '<table style="width: 100%; border-collapse: collapse;">';
+      
+      // Table headers
+      printContents += '<thead><tr>';
+      ['ID', 'Name', 'Category', 'Status', 'Daily Rate', 'Acquisition Date'].forEach(header => {
+        printContents += `<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #f2f2f2;">${header}</th>`;
+      });
+      printContents += '</tr></thead>';
+      
+      // Table body
+      printContents += '<tbody>';
+      this.filteredItems.forEach(item => {
+        printContents += '<tr>';
+        [
+          item.id,
+          item.name,
+          item.category,
+          item.status,
+          `$${item.rate}/day`,
+          item.acquisitionDate || 'Not specified'
+        ].forEach(cell => {
+          printContents += `<td style="border: 1px solid #ddd; padding: 8px;">${cell}</td>`;
+        });
+        printContents += '</tr>';
+      });
+      printContents += '</tbody></table>';
+      
+      // Add print date
+      const today = new Date().toLocaleDateString();
+      printContents += `<p style="text-align: right; margin-top: 20px; font-style: italic;">Generated on ${today}</p>`;
+      
+      // Replace the entire body with our print content
+      document.body.innerHTML = printContents;
+      
+      // Trigger print dialog
+      window.print();
+      
+      // Restore original content
+      document.body.innerHTML = originalContents;
+      
+      this.showSuccess('Print job sent to printer', 'Print Initiated');
     }
   }
 };
