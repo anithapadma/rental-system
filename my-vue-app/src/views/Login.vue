@@ -141,6 +141,20 @@ export default {
       this.isLoading = true;
       
       try {
+        // Special validation for admin login attempts
+        if (this.loginType === 'admin' && this.credentials.email !== 'admin@example.com') {
+          this.error = 'This email is not authorized for admin access.';
+          this.isLoading = false;
+          return;
+        }
+        
+        // Special validation for employee login attempts
+        if (this.loginType === 'employee' && this.credentials.email === 'admin@example.com') {
+          this.error = 'Admin account cannot be used for employee login.';
+          this.isLoading = false;
+          return;
+        }
+        
         // Add user type to credentials
         this.credentials.type = this.loginType;
         
@@ -157,6 +171,22 @@ export default {
             user.type = this.loginType;
             // Update user in localStorage with the type
             localStorage.setItem('user', JSON.stringify(user));
+          }
+          
+          // Additional security check - ensure only admin@example.com can be admin
+          if (user.type === 'admin' && this.credentials.email !== 'admin@example.com') {
+            this.error = 'Unauthorized admin access attempt.';
+            authService.logout();
+            this.isLoading = false;
+            return;
+          }
+          
+          // Prevent admin account from accessing employee routes
+          if (user.type === 'employee' && this.credentials.email === 'admin@example.com') {
+            this.error = 'Admin account cannot access employee section.';
+            authService.logout();
+            this.isLoading = false;
+            return;
           }
           
           console.log('Login successful, user:', user);

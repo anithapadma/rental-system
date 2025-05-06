@@ -106,26 +106,49 @@ router.beforeEach((to, from, next) => {
   const isLoggedIn = localStorage.getItem('user')
   const userData = isLoggedIn ? JSON.parse(isLoggedIn) : {}
   const userRole = userData.type || ''
+  const userEmail = userData.email || ''
   
-  if (to.matched.some(record => record.meta.requiresAuth) && !isLoggedIn) {
-    // Redirect to login if not logged in
+  // Special check for admin routes - only allow admin@example.com
+  if (to.matched.some(record => record.meta.adminOnly)) {
+    if (!isLoggedIn) {
+      next('/')
+    } else if (userRole !== 'admin' || userEmail !== 'admin@example.com') {
+      // If not admin or not the correct email, redirect accordingly
+      if (userRole === 'employee') {
+        next('/employee/dashboard')
+      } else {
+        // Log out and redirect to login
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        next('/')
+      }
+    } else {
+      next() // Allow admin@example.com to admin routes
+    }
+  }
+  // Special check for employee routes - don't allow admin@example.com
+  else if (to.matched.some(record => record.meta.employeeOnly)) {
+    if (!isLoggedIn) {
+      next('/')
+    } else if (userEmail === 'admin@example.com' || userRole !== 'employee') {
+      if (userRole === 'admin') {
+        next('/dashboard')
+      } else {
+        // Log out and redirect to login
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        next('/')
+      }
+    } else {
+      next() // Allow non-admin employees to employee routes
+    }
+  }
+  // Regular authentication check for other routes
+  else if (to.matched.some(record => record.meta.requiresAuth) && !isLoggedIn) {
     next('/')
-  } else if (to.matched.some(record => record.meta.adminOnly) && userRole !== 'admin') {
-    // Redirect employees to employee dashboard if trying to access admin routes
-    if (userRole === 'employee') {
-      next('/employee/dashboard')
-    } else {
-      next('/')
-    }
-  } else if (to.matched.some(record => record.meta.employeeOnly) && userRole !== 'employee') {
-    // Redirect admins to admin dashboard if trying to access employee routes
-    if (userRole === 'admin') {
-      next('/dashboard')
-    } else {
-      next('/')
-    }
-  } else if (to.path === '/' && isLoggedIn) {
-    // Redirect logged in users to their appropriate dashboard
+  }
+  // Auto-redirect logged-in users from login page
+  else if (to.path === '/' && isLoggedIn) {
     if (userRole === 'admin') {
       next('/dashboard')
     } else if (userRole === 'employee') {
@@ -133,7 +156,8 @@ router.beforeEach((to, from, next) => {
     } else {
       next()
     }
-  } else {
+  } 
+  else {
     next()
   }
 })
