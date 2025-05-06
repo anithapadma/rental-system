@@ -105,7 +105,7 @@
               <i class="fas fa-chart-line nav-icon"></i>
             </div>
             <transition name="fade-slide">
-              <span v-if="!isCollapsed"  style="margin-right:10px;" class="nav-text">Analytics</span>
+              <span v-if="!isCollapsed"  style="margin-right:80px;" class="nav-text">Analytics</span>
             </transition>
             <transition name="fade-slide">
               <i v-if="!isCollapsed" :class="['fas', analyticsMenuOpen ? 'fa-chevron-down' : 'fa-chevron-right', 'nav-chevron']"></i>
@@ -125,7 +125,7 @@
                 <div class="active-indicator"></div>
               </router-link>
               
-              <router-link to="/analytics/revenue" class="nav-item sub-nav-item" active-class="active">
+              <!-- <router-link to="/analytics/revenue" class="nav-item sub-nav-item" active-class="active">
                 <div class="nav-icon-wrapper">
                   <i class="fas fa-dollar-sign nav-icon"></i>
                 </div>
@@ -163,7 +163,7 @@
                   <span v-if="!isCollapsed" class="nav-text">Customer Analytics</span>
                 </transition>
                 <div class="active-indicator"></div>
-              </router-link>
+              </router-link> -->
             </div>
           </transition>
         </div>
@@ -197,7 +197,7 @@
                 <div class="active-indicator"></div>
               </router-link>
               
-              <router-link to="/reports/revenue" class="nav-item sub-nav-item" active-class="active">
+              <!-- <router-link to="/reports/revenue" class="nav-item sub-nav-item" active-class="active">
                 <div class="nav-icon-wrapper">
                   <i class="fas fa-money-bill-wave nav-icon"></i>
                 </div>
@@ -245,7 +245,7 @@
                   <span v-if="!isCollapsed" class="nav-text">Export Reports</span>
                 </transition>
                 <div class="active-indicator"></div>
-              </router-link>
+              </router-link> -->
             </div>
           </transition>
         </div>
