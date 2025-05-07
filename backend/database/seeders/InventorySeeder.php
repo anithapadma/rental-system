@@ -181,7 +181,12 @@ class InventorySeeder extends Seeder
         ];
 
         foreach ($inventoryItems as $item) {
-            Inventory::create($item);
+            // Check if an item with this ID already exists
+            if (!Inventory::where('id', $item['id'])->exists()) {
+                Inventory::create($item);
+            } else {
+                $this->command->info("Inventory item {$item['id']} already exists. Skipping...");
+            }
         }
     }
 }

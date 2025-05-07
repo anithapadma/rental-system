@@ -176,7 +176,7 @@
           <div class="text-sm text-gray-700">
             Showing <span class="font-medium">{{ pagination.startItem }}</span> to 
             <span class="font-medium">{{ pagination.endItem }}</span> of 
-            <span class="font-medium">{{ filteredAgreements.length }}</span> agreements
+            <span class="font-medium">{{ pagination.totalItems }}</span> agreements
           </div>
           <div class="flex space-x-2">
             <button 
@@ -297,7 +297,7 @@
                     <td class="px-4 py-2 text-sm">{{ item.name }}</td>
                     <td class="px-4 py-2 text-sm">{{ item.quantity }}</td>
                     <td class="px-4 py-2 text-sm">${{ item.rate }}/day</td>
-                    <td class="px-4 py-2 text-sm">${{ item.total }}</td>
+                    <td class="px-4 py-2 text-sm">${{ item.total !== undefined ? item.total : (item.quantity * item.rate).toFixed(2) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -324,7 +324,10 @@
               <button @click="viewingAgreement = null" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none mr-2">
                 Close
               </button>
-              <button v-if="viewingAgreement?.status === 'Active'" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+              <button 
+                v-if="viewingAgreement?.status === 'Active'" 
+                @click="openEditModal(viewingAgreement); viewingAgreement = null;" 
+                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
                 Edit Agreement
               </button>
             </div>
@@ -508,6 +511,178 @@
       </div>
     </div>
     
+    <!-- Edit Agreement Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-modal-in">
+        <div class="flex justify-between items-center border-b border-gray-200 px-6 py-4">
+          <h2 class="text-xl font-bold text-gray-800">Edit Agreement</h2>
+          <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <form @submit.prevent="updateAgreement" class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+              <input 
+                v-model="editingAgreement.customer" 
+                type="text" 
+                required
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Customer Email</label>
+              <input 
+                v-model="editingAgreement.customerEmail" 
+                type="email" 
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Customer Phone</label>
+              <input 
+                v-model="editingAgreement.customerPhone" 
+                type="text" 
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                v-model="editingAgreement.status"
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+                <option value="Expired">Expired</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input 
+                v-model="editingAgreement.startDate" 
+                type="date" 
+                required
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input 
+                v-model="editingAgreement.endDate" 
+                type="date" 
+                required
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+            </div>
+          </div>
+          
+          <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-700 mb-3">Rental Items</h3>
+            <div class="bg-gray-50 rounded-md p-4 mb-4">
+              <div v-for="(item, index) in editingAgreement.items" :key="index" class="flex items-center gap-4 mb-3">
+                <div class="flex-grow">
+                  <div class="grid grid-cols-12 gap-3">
+                    <div class="col-span-5">
+                      <label class="block text-xs font-medium text-gray-500 mb-1">Item</label>
+                      <input 
+                        v-model="item.name" 
+                        type="text"
+                        class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Item name"
+                      >
+                    </div>
+                    <div class="col-span-2">
+                      <label class="block text-xs font-medium text-gray-500 mb-1">Quantity</label>
+                      <input 
+                        v-model="item.quantity" 
+                        type="number"
+                        min="1"
+                        class="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                    </div>
+                    <div class="col-span-2">
+                      <label class="block text-xs font-medium text-gray-500 mb-1">Rate</label>
+                      <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-gray-500 text-sm">$</span>
+                        <input 
+                          v-model="item.rate" 
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          class="w-full border border-gray-300 rounded-md pl-6 pr-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                      </div>
+                    </div>
+                    <div class="col-span-2">
+                      <label class="block text-xs font-medium text-gray-500 mb-1">Total</label>
+                      <div class="relative bg-gray-100 rounded-md px-3 py-1 text-sm">
+                        ${{ (item.quantity * item.rate).toFixed(2) }}
+                      </div>
+                    </div>
+                    <div class="col-span-1 flex items-end justify-end">
+                      <button 
+                        type="button"
+                        @click="editItem(index)"
+                        class="text-red-500 hover:text-red-700 focus:outline-none"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                type="button"
+                @click="addEditItem"
+                class="mt-2 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add Item
+              </button>
+            </div>
+            
+            <div class="bg-gray-50 rounded-md p-4 flex justify-between items-center">
+              <span class="text-lg font-medium">Total Agreement Value:</span>
+              <span class="text-xl font-bold">${{ editingAgreement && editingAgreement.items ? editingAgreement.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0).toFixed(2) : '0.00' }}</span>
+            </div>
+          </div>
+          
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+            <textarea 
+              v-model="editingAgreement.notes" 
+              rows="3"
+              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter any additional notes or terms for this agreement"
+            ></textarea>
+          </div>
+          
+          <div class="flex justify-end">
+            <button 
+              type="button"
+              @click="showEditModal = false" 
+              class="mr-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+              Update Agreement
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
     <!-- Loading Spinner -->
     <LoadingSpinner :is-visible="isLoading" :message="loadingMessage" />
     
@@ -519,7 +694,7 @@
       <div class="flex">
         <div class="flex-shrink-0">
           <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l-2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>
         </div>
         <div class="ml-3">
@@ -536,6 +711,7 @@
 import Sidebar from '../../components/Sidebar.vue';
 import LoadingSpinner from '../../components/LoadingSpinner.vue';
 import pageFunctionality from '../../mixins/pageFunctionality';
+import agreementsService from '../../services/agreementsService';
 
 export default {
   name: 'Agreements',
@@ -546,16 +722,7 @@ export default {
   mixins: [pageFunctionality],
   data() {
     return {
-      agreements: [
-        { id: 'AGR-001', customer: 'John Smith', startDate: '2025-04-28', endDate: '2025-05-04', value: 315, status: 'Active', customerEmail: 'john@example.com', customerPhone: '(555) 123-4567' },
-        { id: 'AGR-002', customer: 'Emily Brown', startDate: '2025-04-28', endDate: '2025-05-05', value: 175, status: 'Active', customerEmail: 'emily@example.com', customerPhone: '(555) 234-5678' },
-        { id: 'AGR-003', customer: 'Mike Williams', startDate: '2025-04-20', endDate: '2025-04-29', value: 400, status: 'Expired', customerEmail: 'mike@example.com', customerPhone: '(555) 345-6789' },
-        { id: 'AGR-004', customer: 'Sarah Johnson', startDate: '2025-04-25', endDate: '2025-04-30', value: 175, status: 'Completed', customerEmail: 'sarah@example.com', customerPhone: '(555) 456-7890' },
-        { id: 'AGR-005', customer: 'David Miller', startDate: '2025-04-22', endDate: '2025-04-27', value: 375, status: 'Cancelled', customerEmail: 'david@example.com', customerPhone: '(555) 567-8901' },
-        { id: 'AGR-006', customer: 'Robert Jones', startDate: '2025-05-01', endDate: '2025-05-03', value: 90, status: 'Active', customerEmail: 'robert@example.com', customerPhone: '(555) 678-9012' },
-        { id: 'AGR-007', customer: 'Lisa Davis', startDate: '2025-05-01', endDate: '2025-05-05', value: 80, status: 'Active', customerEmail: 'lisa@example.com', customerPhone: '(555) 789-0123' },
-        { id: 'AGR-008', customer: 'James Wilson', startDate: '2025-04-29', endDate: '2025-05-02', value: 45, status: 'Active', customerEmail: 'james@example.com', customerPhone: '(555) 890-1234' }
-      ],
+      agreements: [],
       filteredAgreements: [],
       paginatedAgreements: [],
       searchQuery: '',
@@ -565,10 +732,13 @@ export default {
         itemsPerPage: 5,
         totalPages: 1,
         startItem: 1,
-        endItem: 1
+        endItem: 1,
+        totalItems: 0
       },
       viewingAgreement: null,
       showCreateAgreementModal: false,
+      showEditModal: false,
+      editingAgreement: null,
       downloadComplete: false,
       defaultItems: [
         { name: 'Power Generator', quantity: 1, rate: 45, total: 135 },
@@ -587,7 +757,9 @@ export default {
         items: [
           { name: '', quantity: 1, rate: 0 }
         ]
-      }
+      },
+      error: null,
+      serverSidePagination: true
     };
   },
   computed: {
@@ -610,7 +782,11 @@ export default {
       this.updatePaginatedAgreements();
     },
     'pagination.currentPage'() {
-      this.updatePaginatedAgreements();
+      if (this.serverSidePagination) {
+        this.fetchPageData();
+      } else {
+        this.updatePaginatedAgreements();
+      }
     }
   },
   mounted() {
@@ -635,23 +811,97 @@ export default {
       this.startLoading("Loading agreements...");
       
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        this.searchQuery = '';
-        this.statusFilter = 'all';
-        this.pagination.currentPage = 1;
+        // Build query params for API
+        const params = {
+          page: this.pagination.currentPage,
+          per_page: this.pagination.itemsPerPage
+        };
         
-        this.applyFilters();
+        // Add search and filter params if they exist
+        if (this.searchQuery.trim() !== '') {
+          params.search = this.searchQuery.trim();
+        }
+        
+        if (this.statusFilter !== 'all') {
+          params.status = this.statusFilter;
+        }
+        
+        // Call API with params
+        const response = await agreementsService.getAgreements(params);
+        console.log('API Response:', response.data); // Debug line
+        
+        // Handle API response - support both paginated and non-paginated responses
+        if (response.data) {
+          if (response.data.data) {
+            // Standard Laravel paginated response
+            this.agreements = response.data.data.map(agreement => this.ensureTotals(agreement));
+            this.pagination.totalItems = response.data.meta?.total || response.data.total || 0;
+            this.pagination.totalPages = response.data.meta?.last_page || response.data.last_page || 1;
+          } else if (Array.isArray(response.data)) {
+            // Direct array response
+            this.agreements = response.data.map(agreement => this.ensureTotals(agreement));
+            this.pagination.totalItems = response.data.length;
+            this.pagination.totalPages = Math.ceil(response.data.length / this.pagination.itemsPerPage) || 1;
+          } else {
+            // Default to empty array if response format is unexpected
+            this.agreements = [];
+            this.pagination.totalItems = 0;
+            this.pagination.totalPages = 1;
+            console.error('Unexpected response format:', response.data);
+          }
+          
+          // For server-side pagination
+          if (this.serverSidePagination) {
+            this.filteredAgreements = this.agreements;
+            this.paginatedAgreements = this.agreements;
+            
+            // Update pagination info
+            const start = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage + 1;
+            const end = Math.min(start + this.pagination.itemsPerPage - 1, this.pagination.totalItems);
+            this.pagination.startItem = this.pagination.totalItems ? start : 0;
+            this.pagination.endItem = end;
+          } else {
+            // For client-side pagination
+            this.applyFilters();
+          }
+        }
       } catch (error) {
         this.handleError(error);
+        console.error('Error fetching data:', error);
       } finally {
         this.stopLoading();
       }
     },
+    
+    // Helper method to ensure all items have total property
+    ensureTotals(agreement) {
+      if (agreement && agreement.items && Array.isArray(agreement.items)) {
+        agreement.items = agreement.items.map(item => {
+          if (item && (item.total === undefined || item.total === null)) {
+            item.total = parseFloat((item.quantity * item.rate).toFixed(2));
+          }
+          return item;
+        });
+      }
+      return agreement;
+    },
+    
     handleSearch() {
       this.pagination.currentPage = 1;
-      this.applyFilters();
+      if (this.serverSidePagination) {
+        this.fetchPageData();
+      } else {
+        this.applyFilters();
+      }
     },
+    
     applyFilters() {
+      if (this.serverSidePagination) {
+        this.pagination.currentPage = 1;
+        this.fetchPageData();
+        return;
+      }
+      
       let result = [...this.agreements];
       
       // Apply search filter
@@ -675,6 +925,7 @@ export default {
       this.calculatePagination();
       this.updatePaginatedAgreements();
     },
+    
     calculatePagination() {
       this.pagination.totalPages = Math.ceil(this.filteredAgreements.length / this.pagination.itemsPerPage) || 1;
       
@@ -688,47 +939,80 @@ export default {
       this.pagination.startItem = this.filteredAgreements.length ? start + 1 : 0;
       this.pagination.endItem = end;
     },
+    
     updatePaginatedAgreements() {
-      const start = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
-      const end = start + this.pagination.itemsPerPage;
-      this.paginatedAgreements = this.filteredAgreements.slice(start, end);
+      if (!this.serverSidePagination) {
+        const start = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
+        const end = start + this.pagination.itemsPerPage;
+        this.paginatedAgreements = this.filteredAgreements.slice(start, end);
+      }
     },
+    
     prevPage() {
       if (this.pagination.currentPage > 1) {
         this.pagination.currentPage--;
-        this.calculatePagination();
+        if (this.serverSidePagination) {
+          this.fetchPageData();
+        } else {
+          this.calculatePagination();
+        }
       }
     },
+    
     nextPage() {
       if (this.pagination.currentPage < this.pagination.totalPages) {
         this.pagination.currentPage++;
-        this.calculatePagination();
+        if (this.serverSidePagination) {
+          this.fetchPageData();
+        } else {
+          this.calculatePagination();
+        }
       }
     },
-    viewAgreement(agreement) {
-      this.viewingAgreement = {...agreement};
+    
+    async viewAgreement(agreement) {
+      this.startLoading(`Loading agreement details...`);
       
-      // If the agreement doesn't have items, assign some
-      if (!this.viewingAgreement.items) {
-        // Map default items and adjust values based on agreement value
-        const factor = this.viewingAgreement.value / 315; // Normalize factor
-        this.viewingAgreement.items = this.defaultItems.map(item => {
-          return {
-            ...item,
-            total: Math.round(item.total * factor)
-          };
-        });
+      try {
+        // Fetch the full agreement details from the API
+        const response = await agreementsService.getAgreement(agreement.id);
+        this.viewingAgreement = response.data;
+        
+        // Ensure each item has a total property
+        if (this.viewingAgreement.items && this.viewingAgreement.items.length > 0) {
+          this.viewingAgreement.items = this.viewingAgreement.items.map(item => {
+            // If total is missing, calculate it from quantity and rate
+            if (item.total === undefined) {
+              item.total = parseFloat((item.quantity * item.rate).toFixed(2));
+            }
+            return item;
+          });
+        } else if (!this.viewingAgreement.items || this.viewingAgreement.items.length === 0) {
+          // If no items exist, create some default ones based on agreement value
+          const factor = this.viewingAgreement.value / 315; // Normalize factor
+          this.viewingAgreement.items = this.defaultItems.map(item => {
+            return {
+              ...item,
+              total: parseFloat((item.quantity * item.rate * factor).toFixed(2))
+            };
+          });
+        }
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
       }
     },
+    
     async downloadAgreement(id) {
       this.startLoading(`Preparing agreement ${id} for download...`);
       
       try {
-        // Simulate PDF generation process
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Fetch PDF from API
+        const response = await agreementsService.generatePdf(id);
         
-        // Create a blob object that represents a PDF file
-        const blob = new Blob(['Agreement PDF content'], { type: 'application/pdf' });
+        // Create a blob from the PDF data
+        const blob = new Blob([response.data], { type: 'application/pdf' });
         
         // Create a download link and trigger it
         const link = document.createElement('a');
@@ -751,36 +1035,56 @@ export default {
         this.stopLoading();
       }
     },
+    
     calculateItemTotal(item) {
-      return (item.quantity * item.rate).toFixed(2);
+      if (!item) return '0.00';
+      const quantity = item.quantity || 0;
+      const rate = item.rate || 0;
+      return (quantity * rate).toFixed(2);
     },
+    
     calculateAgreementTotal() {
+      if (!this.newAgreement || !this.newAgreement.items) return '0.00';
       return this.newAgreement.items
-        .reduce((sum, item) => sum + (item.quantity * item.rate), 0)
+        .reduce((sum, item) => {
+          const quantity = item.quantity || 0;
+          const rate = item.rate || 0;
+          return sum + (quantity * rate);
+        }, 0)
         .toFixed(2);
     },
+    
     addItem() {
       this.newAgreement.items.push({ name: '', quantity: 1, rate: 0 });
     },
+    
     removeItem(index) {
       if (this.newAgreement.items.length > 1) {
         this.newAgreement.items.splice(index, 1);
       }
     },
+    
+    editItem(index) {
+      if (this.editingAgreement && this.editingAgreement.items) {
+        this.editingAgreement.items.splice(index, 1);
+      }
+    },
+    
+    addEditItem() {
+      if (this.editingAgreement) {
+        this.editingAgreement.items.push({ name: '', quantity: 1, rate: 0 });
+      }
+    },
+    
     async createNewAgreement() {
       this.startLoading('Creating new agreement...');
       
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        
         // Calculate total value
         const value = parseFloat(this.calculateAgreementTotal());
         
-        // Create new agreement object
-        const newAgreementId = `AGR-${String(this.agreements.length + 1).padStart(3, '0')}`;
-        const agreement = {
-          id: newAgreementId,
+        // Create new agreement object for API
+        const agreementData = {
           customer: this.newAgreement.customer,
           customerEmail: this.newAgreement.customerEmail,
           customerPhone: this.newAgreement.customerPhone,
@@ -793,13 +1097,17 @@ export default {
           items: this.newAgreement.items.map(item => ({
             ...item,
             total: parseFloat(this.calculateItemTotal(item))
-          })),
-          createdDate: new Date().toISOString().split('T')[0],
-          updatedDate: new Date().toISOString().split('T')[0]
+          }))
         };
         
-        // Add to agreements array
-        this.agreements.unshift(agreement);
+        // Call API to create agreement
+        const response = await agreementsService.createAgreement(agreementData);
+        const newAgreement = response.data;
+        
+        // Add to agreements array if using client-side pagination
+        if (!this.serverSidePagination) {
+          this.agreements.unshift(newAgreement);
+        }
         
         // Reset form
         this.newAgreement = {
@@ -820,15 +1128,87 @@ export default {
         this.showCreateAgreementModal = false;
         
         // Show success message
-        this.showSuccess(`Agreement ${newAgreementId} created successfully`, 'Agreement Created');
+        this.showSuccess(`Agreement ${newAgreement.id} created successfully`, 'Agreement Created');
         
         // Refresh data to update counts and lists
-        this.applyFilters();
+        this.fetchPageData();
       } catch (error) {
         this.handleError(error);
       } finally {
         this.stopLoading();
       }
+    },
+    
+    openEditModal(agreement) {
+      this.editingAgreement = JSON.parse(JSON.stringify(agreement)); // Deep copy
+      this.showEditModal = true;
+    },
+    
+    async updateAgreement() {
+      if (!this.editingAgreement) return;
+      
+      this.startLoading('Updating agreement...');
+      
+      try {
+        const id = this.editingAgreement.id;
+        
+        // Ensure items have total values calculated
+        if (this.editingAgreement.items && this.editingAgreement.items.length > 0) {
+          this.editingAgreement.items = this.editingAgreement.items.map(item => {
+            if (!item.total || item.total === undefined) {
+              item.total = parseFloat((item.quantity * item.rate).toFixed(2));
+            }
+            return item;
+          });
+          
+          // Calculate total value based on items
+          this.editingAgreement.value = this.editingAgreement.items.reduce((sum, item) => {
+            const quantity = item.quantity || 0;
+            const rate = item.rate || 0;
+            return sum + (quantity * rate);
+          }, 0);
+        }
+        
+        // Call API to update
+        await agreementsService.updateAgreement(id, this.editingAgreement);
+        
+        // Close modal
+        this.showEditModal = false;
+        this.editingAgreement = null;
+        
+        // Show success message
+        this.showSuccess(`Agreement ${id} updated successfully`, 'Agreement Updated');
+        
+        // Refresh data
+        this.fetchPageData();
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
+      }
+    },
+    
+    async updateAgreementStatus(id, status) {
+      this.startLoading(`Updating agreement status...`);
+      
+      try {
+        // Call API to update status
+        await agreementsService.updateStatus(id, status);
+        
+        // Show success message
+        this.showSuccess(`Agreement status updated to ${status}`, 'Status Updated');
+        
+        // Refresh data
+        this.fetchPageData();
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
+      }
+    },
+    
+    refreshData() {
+      this.fetchPageData();
     }
   }
 };

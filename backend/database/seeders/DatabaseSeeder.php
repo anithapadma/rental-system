@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             // InventoryCategorySeeder::class,
             InventorySeeder::class,
             RentalSeeder::class,
+            AgreementSeeder::class, // Added the AgreementSeeder
             // SettingSeeder::class,
         ]);
     }

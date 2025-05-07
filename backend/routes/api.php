@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RentalController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\AgreementController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,3 +49,12 @@ Route::get('/inventory/{id}', [InventoryController::class, 'show']);
 Route::put('/inventory/{id}', [InventoryController::class, 'update']);
 Route::delete('/inventory/{id}', [InventoryController::class, 'destroy']);
 Route::patch('/inventory/{id}/status', [InventoryController::class, 'updateStatus']);
+
+// Agreement routes
+Route::get('/agreements', [AgreementController::class, 'index']);
+Route::post('/agreements', [AgreementController::class, 'store']);
+Route::get('/agreements/{id}', [AgreementController::class, 'show']);
+Route::put('/agreements/{id}', [AgreementController::class, 'update']);
+Route::delete('/agreements/{id}', [AgreementController::class, 'destroy']);
+Route::patch('/agreements/{id}/status', [AgreementController::class, 'updateStatus']);
+Route::get('/agreements/{id}/pdf', [AgreementController::class, 'generatePdf']);
