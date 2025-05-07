@@ -18,7 +18,13 @@ use App\Http\Controllers\Api\AuthController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-
+Route::get('/cors-test', function (Request $request) {
+    return response()->json([
+        'message' => 'CORS is working correctly!',
+        'origin' => $request->header('Origin'),
+        'method' => $request->method()
+    ]);
+});
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
