@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             // Comment out seeders that don't exist yet
             // InventoryCategorySeeder::class,
             // InventorySeeder::class,
-            // RentalSeeder::class,
+            RentalSeeder::class,
             // SettingSeeder::class,
         ]);
     }

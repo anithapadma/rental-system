@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\RentalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,3 +30,12 @@ Route::get('/cors-test', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+// Rental routes
+Route::get('/rentals', [RentalController::class, 'index']);
+Route::post('/rentals', [RentalController::class, 'store']);
+Route::get('/rentals/{id}', [RentalController::class, 'show']);
+Route::put('/rentals/{id}', [RentalController::class, 'update']);
+Route::delete('/rentals/{id}', [RentalController::class, 'destroy']);
+Route::patch('/rentals/{id}/status', [RentalController::class, 'updateStatus']);
+Route::post('/rentals/{id}/return', [RentalController::class, 'returnRental']);

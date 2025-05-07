@@ -5,7 +5,7 @@
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Rental List</h1>
         <div class="flex gap-4">
-          <button @click="refreshData" class="btn-refresh flex items-center gap-2 transition-all duration-300 hover:scale-105">
+          <button @click="fetchPageData" class="btn-refresh flex items-center gap-2 transition-all duration-300 hover:scale-105">
             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -78,15 +78,15 @@
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Items
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <!-- <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Start Date
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Due Date
-                </th>
+                </th> -->
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
@@ -96,7 +96,12 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-if="paginatedRentals.length === 0">
+              <tr v-if="isLoading">
+                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                  Loading rental data...
+                </td>
+              </tr>
+              <tr v-else-if="paginatedRentals.length === 0">
                 <td colspan="7" class="px-6 py-8 text-center text-gray-500">
                   No rental records found matching your criteria.
                 </td>
@@ -111,12 +116,12 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ rental.items }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ formatDate(rental.startDate) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ formatDate(rental.dueDate) }}
-                </td>
+                </td> -->
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span :class="getStatusClass(rental.status)"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
@@ -137,7 +142,7 @@
           <div class="text-sm text-gray-700">
             Showing <span class="font-medium">{{ pagination.startItem }}</span> to 
             <span class="font-medium">{{ pagination.endItem }}</span> of 
-            <span class="font-medium">{{ filteredRentals.length }}</span> rentals
+            <span class="font-medium">{{ totalRentals }}</span> rentals
           </div>
           <div class="flex space-x-2">
             <button 
@@ -305,8 +310,9 @@
             </button>
             <button 
               type="submit"
+              :disabled="isCreating"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
-              Add Rental
+              {{ isCreating ? 'Creating...' : 'Add Rental' }}
             </button>
           </div>
         </form>
@@ -322,6 +328,7 @@
 import Sidebar from '../../components/Sidebar.vue';
 import LoadingSpinner from '../../components/LoadingSpinner.vue';
 import pageFunctionality from '../../mixins/pageFunctionality';
+import rentalService from '../../services/rentalService';
 
 export default {
   name: 'RentalList',
@@ -332,17 +339,9 @@ export default {
   mixins: [pageFunctionality],
   data() {
     return {
-      rentals: [
-        { id: 'R-2025-001', customer: 'John Smith', items: 'Power Generator', startDate: '2025-04-28', dueDate: '2025-05-04', status: 'Active', notes: 'Customer requested delivery', dailyRate: 45 },
-        { id: 'R-2025-002', customer: 'Emily Brown', items: 'Pressure Washer', startDate: '2025-04-28', dueDate: '2025-05-05', status: 'Active', notes: 'First-time customer', dailyRate: 25 },
-        { id: 'R-2025-003', customer: 'Mike Williams', items: 'Concrete Mixer', startDate: '2025-04-20', dueDate: '2025-04-29', status: 'Overdue', notes: 'Called customer about late return', dailyRate: 40 },
-        { id: 'R-2025-004', customer: 'Sarah Johnson', items: 'Floor Sander', startDate: '2025-04-25', dueDate: '2025-04-30', status: 'Returned', notes: 'Item returned in good condition', dailyRate: 35 },
-        { id: 'R-2025-005', customer: 'David Miller', items: 'Scissor Lift', startDate: '2025-04-22', dueDate: '2025-04-27', status: 'Maintenance', notes: 'Item needs repair after return', dailyRate: 75 },
-        { id: 'R-2025-006', customer: 'Robert Jones', items: 'Jackhammer', startDate: '2025-05-01', dueDate: '2025-05-03', status: 'Active', notes: '', dailyRate: 30 },
-        { id: 'R-2025-007', customer: 'Lisa Davis', items: 'Paint Sprayer', startDate: '2025-05-01', dueDate: '2025-05-05', status: 'Active', notes: 'Repeat customer', dailyRate: 20 },
-        { id: 'R-2025-008', customer: 'James Wilson', items: 'Tile Cutter', startDate: '2025-04-29', dueDate: '2025-05-02', status: 'Active', notes: '', dailyRate: 15 },
-      ],
+      rentals: [],
       filteredRentals: [], // Will store filtered results
+      totalRentals: 0,
       searchQuery: '',
       statusFilter: 'all',
       sortOption: 'dateDesc',
@@ -362,7 +361,9 @@ export default {
         items: '',
         notes: '',
         status: 'Active'
-      }
+      },
+      isCreating: false,
+      serverSidePagination: true // Set to true if your API supports pagination
     };
   },
   watch: {
@@ -372,14 +373,18 @@ export default {
     }
   },
   computed: {
-    // Get paginated rentals for current page
+    // Get paginated rentals for current page (for client-side pagination)
     paginatedRentals() {
+      if (this.serverSidePagination) {
+        return this.rentals;
+      }
+      
       const start = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
       const end = start + this.pagination.itemsPerPage;
       return this.filteredRentals.slice(start, end);
     }
   },
-  mounted() {
+  created() {
     this.fetchPageData();
   },
   methods: {
@@ -398,19 +403,82 @@ export default {
       }
     },
     async fetchPageData() {
-      // In a real application, this would call an API
       this.startLoading("Loading rental data...");
-      
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        // Reset filters and pagination when fetching fresh data
-        this.searchQuery = '';
-        this.statusFilter = 'all';
-        this.sortOption = 'dateDesc';
-        this.pagination.currentPage = 1;
-        
-        // Apply initial filtering and sorting
-        this.applyFilters();
+        if (this.serverSidePagination) {
+          const params = {
+            page: this.pagination.currentPage,
+            per_page: this.pagination.itemsPerPage,
+            search: this.searchQuery,
+            status: this.statusFilter !== 'all' ? this.statusFilter : undefined,
+            sort: this.getSortParam()
+          };
+          const response = await rentalService.getRentals(params);
+          this.rentals = response.data || [];
+          this.totalRentals = response.meta?.total || this.rentals.length;
+          this.pagination.currentPage = response.meta?.current_page || 1;
+          this.pagination.totalPages = Math.ceil(this.totalRentals / (response.meta?.per_page || this.pagination.itemsPerPage));
+          this.calculatePaginationDisplay();
+        } else {
+          const response = await rentalService.getRentals();
+          this.rentals = response.data || [];
+          this.totalRentals = this.rentals.length;
+          this.applyFilters();
+        }
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async addNewRental() {
+      try {
+        this.isCreating = true;
+        const response = await rentalService.createRental({
+          customer: this.newRental.customer,
+          start_date: this.newRental.startDate,
+          due_date: this.newRental.dueDate,
+          items: this.newRental.items,
+          notes: this.newRental.notes,
+          status: 'Active'
+        });
+        this.showSuccess(`New rental created successfully: ${response.data?.id || 'ID pending'}`, 'Rental Created');
+        this.newRental = {
+          customer: '',
+          startDate: new Date().toISOString().split('T')[0],
+          dueDate: '',
+          items: '',
+          notes: '',
+          status: 'Active'
+        };
+        this.showNewRentalModal = false;
+        this.fetchPageData();
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.isCreating = false;
+      }
+    },
+    async returnRental(id) {
+      try {
+        this.startLoading(`Processing return for rental ${id}...`);
+        await rentalService.returnRental(id);
+        this.showSuccess(`Rental ${id} has been marked as returned`, 'Rental Returned');
+        await this.fetchPageData();
+        if (this.viewingRental && this.viewingRental.id === id) {
+          this.viewingRental = null;
+        }
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async viewRental(rental) {
+      try {
+        this.startLoading(`Loading details for rental ${rental.id}...`);
+        const detailedRental = await rentalService.getRental(rental.id);
+        this.viewingRental = detailedRental.data || rental;
       } catch (error) {
         this.handleError(error);
       } finally {
@@ -418,36 +486,49 @@ export default {
       }
     },
     handleSearch() {
-      this.pagination.currentPage = 1;
-      this.applyFilters();
+      if (this.serverSidePagination) {
+        // For server-side search, reset to page 1 and fetch new data
+        this.pagination.currentPage = 1;
+        this.fetchPageData();
+      } else {
+        // For client-side search
+        this.pagination.currentPage = 1;
+        this.applyFilters();
+      }
     },
     applyFilters() {
-      // Start with all rentals
-      let result = [...this.rentals];
-      
-      // Apply search query filter
-      if (this.searchQuery.trim() !== '') {
-        const query = this.searchQuery.toLowerCase();
-        result = result.filter(rental => 
-          rental.id.toLowerCase().includes(query) ||
-          rental.customer.toLowerCase().includes(query) ||
-          rental.items.toLowerCase().includes(query)
-        );
+      if (this.serverSidePagination) {
+        // For server-side filtering, fetch new data
+        this.fetchPageData();
+      } else {
+        // For client-side filtering
+        let result = [...this.rentals];
+        
+        // Apply search query filter
+        if (this.searchQuery.trim() !== '') {
+          const query = this.searchQuery.toLowerCase();
+          result = result.filter(rental => 
+            rental.id.toLowerCase().includes(query) ||
+            rental.customer.toLowerCase().includes(query) ||
+            rental.items.toLowerCase().includes(query)
+          );
+        }
+        
+        // Apply status filter
+        if (this.statusFilter !== 'all') {
+          result = result.filter(rental => rental.status === this.statusFilter);
+        }
+        
+        // Apply sorting
+        result = this.sortRentals(result);
+        
+        // Store filtered results
+        this.filteredRentals = result;
+        this.totalRentals = result.length;
+        
+        // Calculate pagination
+        this.calculatePagination();
       }
-      
-      // Apply status filter
-      if (this.statusFilter !== 'all') {
-        result = result.filter(rental => rental.status === this.statusFilter);
-      }
-      
-      // Apply sorting
-      result = this.sortRentals(result);
-      
-      // Store filtered results
-      this.filteredRentals = result;
-      
-      // Calculate pagination
-      this.calculatePagination();
     },
     sortRentals(rentals) {
       switch (this.sortOption) {
@@ -463,83 +544,75 @@ export default {
           return rentals;
       }
     },
+    getSortParam() {
+      // Convert front-end sort option to API parameter
+      switch (this.sortOption) {
+        case 'dateAsc':
+          return 'start_date,asc';
+        case 'dateDesc':
+          return 'start_date,desc';
+        case 'customerAsc':
+          return 'customer,asc';
+        case 'customerDesc':
+          return 'customer,desc';
+        default:
+          return 'start_date,desc';
+      }
+    },
     calculatePagination() {
+      if (this.serverSidePagination) {
+        // For server-side pagination, pagination is calculated when data is fetched
+        return;
+      }
+      
+      // For client-side pagination
       this.pagination.totalPages = Math.ceil(this.filteredRentals.length / this.pagination.itemsPerPage) || 1;
       
       if (this.pagination.currentPage > this.pagination.totalPages) {
         this.pagination.currentPage = 1;
       }
       
+      this.calculatePaginationDisplay();
+    },
+    calculatePaginationDisplay() {
+      // Calculate the display range for both server and client side pagination
       const start = (this.pagination.currentPage - 1) * this.pagination.itemsPerPage;
-      const end = Math.min(start + this.pagination.itemsPerPage, this.filteredRentals.length);
+      const end = Math.min(start + this.pagination.itemsPerPage, this.totalRentals);
       
-      this.pagination.startItem = this.filteredRentals.length ? start + 1 : 0;
+      this.pagination.startItem = this.totalRentals ? start + 1 : 0;
       this.pagination.endItem = end;
     },
     prevPage() {
       if (this.pagination.currentPage > 1) {
         this.pagination.currentPage--;
-        this.calculatePagination();
+        
+        if (this.serverSidePagination) {
+          this.fetchPageData();
+        } else {
+          this.calculatePaginationDisplay();
+        }
       }
     },
     nextPage() {
       if (this.pagination.currentPage < this.pagination.totalPages) {
         this.pagination.currentPage++;
-        this.calculatePagination();
+        
+        if (this.serverSidePagination) {
+          this.fetchPageData();
+        } else {
+          this.calculatePaginationDisplay();
+        }
       }
     },
-    viewRental(rental) {
-      this.viewingRental = {...rental};
-    },
-    returnRental(id) {
-      // Process rental return - in a real app this would update the rental status
-      this.showSuccess(`Rental ${id} has been marked as returned`, 'Rental Returned');
+    refreshData() {
+      // Reset filters
+      this.searchQuery = '';
+      this.statusFilter = 'all';
+      this.sortOption = 'dateDesc';
+      this.pagination.currentPage = 1;
       
-      // Update local data
-      const index = this.rentals.findIndex(r => r.id === id);
-      if (index !== -1) {
-        this.rentals[index].status = 'Returned';
-        // Re-apply filters to update view
-        this.applyFilters();
-      }
-    },
-    addNewRental() {
-      // Generate a new ID
-      const newId = `R-2025-${String(this.rentals.length + 1).padStart(3, '0')}`;
-      
-      // Create the new rental object
-      const rental = {
-        id: newId,
-        customer: this.newRental.customer,
-        startDate: this.newRental.startDate,
-        dueDate: this.newRental.dueDate,
-        items: this.newRental.items,
-        notes: this.newRental.notes,
-        status: 'Active',
-        dailyRate: 35 // Default rate
-      };
-      
-      // Add to the rentals array
-      this.rentals.unshift(rental);
-      
-      // Re-apply filters
-      this.applyFilters();
-      
-      // Reset form
-      this.newRental = {
-        customer: '',
-        startDate: new Date().toISOString().split('T')[0],
-        dueDate: '',
-        items: '',
-        notes: '',
-        status: 'Active'
-      };
-      
-      // Close modal
-      this.showNewRentalModal = false;
-      
-      // Show success message
-      this.showSuccess(`New rental created successfully: ${newId}`, 'Rental Created');
+      // Fetch fresh data
+      this.fetchPageData();
     }
   }
 };
