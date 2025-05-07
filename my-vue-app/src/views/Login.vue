@@ -9,7 +9,7 @@
     </div>
     
     <!-- Login card with animation -->
-    <div class="login-card animate-slide-up">
+    <div class="login-card animate-slide-up" style="margin-top:-95px;">
       <div class="login-header">
         <h2>Welcome Back</h2>
         <p>Sign in to your account</p>

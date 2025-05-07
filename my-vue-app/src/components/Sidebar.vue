@@ -6,9 +6,9 @@
         <i class="fas fa-laptop-code logo-icon pulse"></i>
         <h1 class="logo-text">Track New</h1>
       </div>
-      <button @click="toggleCollapsed" class="collapse-btn" :title="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+      <!-- <button @click="toggleCollapsed" class="collapse-btn" :title="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
         <i :class="isCollapsed ? 'fas fa-angle-right' : 'fas fa-angle-left'"></i>
-      </button>
+      </button> -->
     </div>
     
     <!-- User Info -->
