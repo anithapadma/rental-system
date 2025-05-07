@@ -549,6 +549,7 @@
 import Sidebar from '../../components/Sidebar.vue';
 import LoadingSpinner from '../../components/LoadingSpinner.vue';
 import pageFunctionality from '../../mixins/pageFunctionality';
+import inventoryService from '../../services/inventoryService';
 
 export default {
   name: 'InventoryItems',
@@ -559,68 +560,7 @@ export default {
   mixins: [pageFunctionality],
   data() {
     return {
-      inventoryItems: [
-        { 
-          id: 'INV-001', 
-          name: 'Power Generator', 
-          category: 'Power Tools', 
-          status: 'Available', 
-          rate: 45,
-          description: 'Powerful 5000W generator ideal for construction sites and outdoor events.',
-          features: ['Heavy Duty', 'Fuel Efficient', 'Low Noise'],
-          acquisitionDate: 'Jan 05, 2025',
-          rentalHistory: [
-            { id: 1, date: '2025-03-10', customer: 'John Smith', duration: '3 days', status: 'Completed' },
-            { id: 2, date: '2025-02-15', customer: 'Sarah Johnson', duration: '1 week', status: 'Completed' }
-          ]
-        },
-        { 
-          id: 'INV-002', 
-          name: 'Floor Sander', 
-          category: 'Power Tools', 
-          status: 'Available', 
-          rate: 35,
-          acquisitionDate: 'Feb 12, 2025'
-        },
-        { 
-          id: 'INV-003', 
-          name: 'Concrete Mixer', 
-          category: 'Construction', 
-          status: 'Rented', 
-          rate: 40,
-          rentalHistory: [
-            { id: 1, date: '2025-05-01', customer: 'Mike Williams', duration: 'Ongoing', status: 'Active' }
-          ]
-        },
-        { 
-          id: 'INV-004', 
-          name: 'Pressure Washer', 
-          category: 'Power Tools', 
-          status: 'Rented', 
-          rate: 25,
-          rentalHistory: [
-            { id: 1, date: '2025-04-28', customer: 'Emily Brown', duration: 'Ongoing', status: 'Active' }
-          ]
-        },
-        { 
-          id: 'INV-005', 
-          name: 'Scissor Lift', 
-          category: 'Construction', 
-          status: 'Maintenance', 
-          rate: 75,
-          maintenanceRecords: [
-            { id: 1, date: '2025-04-25', type: 'Regular Maintenance', description: 'Hydraulic system check and oil change' },
-            { id: 2, date: '2025-04-27', type: 'Repair', description: 'Control panel replacement needed' }
-          ]
-        },
-        { id: 'INV-006', name: 'Jackhammer', category: 'Power Tools', status: 'Rented', rate: 30 },
-        { id: 'INV-007', name: 'Paint Sprayer', category: 'Power Tools', status: 'Rented', rate: 20 },
-        { id: 'INV-008', name: 'Tile Cutter', category: 'Power Tools', status: 'Available', rate: 15 },
-        { id: 'INV-009', name: 'Chainsaw', category: 'Landscaping', status: 'Available', rate: 25 },
-        { id: 'INV-010', name: 'Lawn Mower', category: 'Landscaping', status: 'Available', rate: 20 },
-        { id: 'INV-011', name: 'Pipe Cutter', category: 'Plumbing', status: 'Available', rate: 15 },
-        { id: 'INV-012', name: 'Drain Snake', category: 'Plumbing', status: 'Maintenance', rate: 12 }
-      ],
+      inventoryItems: [],
       searchQuery: '',
       categoryFilter: 'all',
       statusFilter: 'all',
@@ -633,6 +573,7 @@ export default {
         startItem: 1,
         endItem: 1
       },
+      error: null,
       viewingItem: null,
       showAddModal: false,
       newItem: {
@@ -645,7 +586,8 @@ export default {
         features: []
       },
       featuresInput: '',
-      showTableView: false
+      showTableView: false,
+      serverSidePagination: true // Use server-side pagination by default
     };
   },
   computed: {
@@ -659,10 +601,16 @@ export default {
   },
   watch: {
     filteredItems() {
-      this.updatePaginatedItems();
+      if (!this.serverSidePagination) {
+        this.updatePaginatedItems();
+      }
     },
     'pagination.currentPage'() {
-      this.updatePaginatedItems();
+      if (this.serverSidePagination) {
+        this.fetchPageData();
+      } else {
+        this.updatePaginatedItems();
+      }
     }
   },
   mounted() {
@@ -689,96 +637,186 @@ export default {
       this.startLoading("Loading inventory items...");
       
       try {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        this.searchQuery = '';
-        this.categoryFilter = 'all';
-        this.statusFilter = 'all';
-        this.pagination.currentPage = 1;
+        // Prepare parameters for API request based on filter and pagination settings
+        const params = {
+          page: this.pagination.currentPage,
+          per_page: this.pagination.itemsPerPage
+        };
+
+        // Add search query if any
+        if (this.searchQuery.trim() !== '') {
+          params.search = this.searchQuery.trim();
+        }
+
+        // Add category filter if not 'all'
+        if (this.categoryFilter !== 'all') {
+          params.category = this.categoryFilter;
+        }
+
+        // Add status filter if not 'all'
+        if (this.statusFilter !== 'all') {
+          params.status = this.statusFilter;
+        }
+
+        // Call API to fetch inventory items
+        const response = await inventoryService.getInventoryItems(params);
         
-        this.applyFilters();
+        // Process the response
+        this.inventoryItems = response.data.data || [];
+        this.filteredItems = this.inventoryItems;
+        this.paginatedItems = this.serverSidePagination ? this.inventoryItems : this.getPaginatedItems(this.filteredItems, this.pagination);
+        
+        // Update pagination info from API response
+        if (this.serverSidePagination && response.data.meta) {
+          this.pagination.currentPage = response.data.meta.current_page || 1;
+          this.pagination.totalPages = response.data.meta.last_page || 1;
+          const total = response.data.meta.total || 0;
+          const perPage = response.data.meta.per_page || this.pagination.itemsPerPage;
+          const start = (this.pagination.currentPage - 1) * perPage + 1;
+          const end = Math.min(start + perPage - 1, total);
+          
+          this.pagination.startItem = total ? start : 0;
+          this.pagination.endItem = end;
+        }
+
+        this.error = null;
       } catch (error) {
         this.handleError(error);
+        this.error = error;
+        // Fallback to show empty state
+        this.inventoryItems = [];
+        this.filteredItems = [];
+        this.paginatedItems = [];
       } finally {
         this.stopLoading();
       }
     },
     handleSearch() {
-      this.pagination.currentPage = 1;
-      this.applyFilters();
+      if (this.serverSidePagination) {
+        this.pagination.currentPage = 1;
+        this.fetchPageData();
+      } else {
+        this.pagination.currentPage = 1;
+        this.applyFilters();
+      }
     },
     applyFilters() {
-      let result = [...this.inventoryItems];
-      
-      // Apply search filter
-      if (this.searchQuery.trim() !== '') {
-        const query = this.searchQuery.toLowerCase();
-        result = result.filter(item => 
-          item.id.toLowerCase().includes(query) ||
-          item.name.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query)
-        );
+      if (this.serverSidePagination) {
+        this.fetchPageData();
+      } else {
+        // Client-side filtering logic - only used if serverSidePagination is false
+        let result = [...this.inventoryItems];
+        
+        // Apply search filter
+        if (this.searchQuery.trim() !== '') {
+          const query = this.searchQuery.toLowerCase();
+          result = result.filter(item => 
+            item.id.toLowerCase().includes(query) ||
+            item.name.toLowerCase().includes(query) ||
+            item.category.toLowerCase().includes(query)
+          );
+        }
+        
+        // Apply category filter
+        if (this.categoryFilter !== 'all') {
+          result = result.filter(item => item.category === this.categoryFilter);
+        }
+        
+        // Apply status filter
+        if (this.statusFilter !== 'all') {
+          result = result.filter(item => item.status === this.statusFilter);
+        }
+        
+        // Store filtered results
+        this.filteredItems = result;
+        
+        // Calculate pagination
+        this.updatePagination(this.filteredItems, this.pagination);
+        this.updatePaginatedItems();
       }
-      
-      // Apply category filter
-      if (this.categoryFilter !== 'all') {
-        result = result.filter(item => item.category === this.categoryFilter);
-      }
-      
-      // Apply status filter
-      if (this.statusFilter !== 'all') {
-        result = result.filter(item => item.status === this.statusFilter);
-      }
-      
-      // Store filtered results
-      this.filteredItems = result;
-      
-      // Calculate pagination
-      this.updatePagination(this.filteredItems, this.pagination);
-      this.updatePaginatedItems();
     },
     updatePaginatedItems() {
-      this.paginatedItems = this.getPaginatedItems(this.filteredItems, this.pagination);
+      if (!this.serverSidePagination) {
+        this.paginatedItems = this.getPaginatedItems(this.filteredItems, this.pagination);
+      }
     },
     prevPage() {
       if (this.pagination.currentPage > 1) {
         this.pagination.currentPage--;
-        this.updatePagination(this.filteredItems, this.pagination);
+        if (this.serverSidePagination) {
+          this.fetchPageData();
+        } else {
+          this.updatePagination(this.filteredItems, this.pagination);
+          this.updatePaginatedItems();
+        }
       }
     },
     nextPage() {
       if (this.pagination.currentPage < this.pagination.totalPages) {
         this.pagination.currentPage++;
-        this.updatePagination(this.filteredItems, this.pagination);
+        if (this.serverSidePagination) {
+          this.fetchPageData();
+        } else {
+          this.updatePagination(this.filteredItems, this.pagination);
+          this.updatePaginatedItems();
+        }
       }
     },
     updatePagination(items, pagination) {
-      pagination.totalPages = Math.ceil(items.length / pagination.itemsPerPage) || 1;
-      
-      // Ensure current page is within bounds
-      if (pagination.currentPage > pagination.totalPages) {
-        pagination.currentPage = 1;
+      if (!this.serverSidePagination) {
+        pagination.totalPages = Math.ceil(items.length / pagination.itemsPerPage) || 1;
+        
+        // Ensure current page is within bounds
+        if (pagination.currentPage > pagination.totalPages) {
+          pagination.currentPage = 1;
+        }
+        
+        const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
+        const end = Math.min(start + pagination.itemsPerPage, items.length);
+        
+        pagination.startItem = items.length ? start + 1 : 0;
+        pagination.endItem = end;
       }
-      
-      const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
-      const end = Math.min(start + pagination.itemsPerPage, items.length);
-      
-      pagination.startItem = items.length ? start + 1 : 0;
-      pagination.endItem = end;
     },
     getPaginatedItems(items, pagination) {
+      if (this.serverSidePagination) {
+        return items;
+      }
+      
       const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
       const end = start + pagination.itemsPerPage;
       return items.slice(start, end);
     },
-    viewItemDetails(item) {
-      this.viewingItem = {...item};
+    async viewItemDetails(item) {
+      try {
+        this.startLoading(`Loading details for ${item.id}...`);
+        
+        // Fetch full item details from API
+        const response = await inventoryService.getInventoryItem(item.id);
+        this.viewingItem = response.data.data;
+      } catch (error) {
+        this.handleError(error);
+        // Fallback to the data we already have
+        this.viewingItem = {...item};
+      } finally {
+        this.stopLoading();
+      }
     },
-    updateItemStatus(id, newStatus) {
-      const index = this.inventoryItems.findIndex(item => item.id === id);
-      if (index !== -1) {
-        this.inventoryItems[index].status = newStatus;
+    async updateItemStatus(id, newStatus) {
+      try {
+        this.startLoading(`Updating status to ${newStatus}...`);
+        
+        // Call API to update item status
+        await inventoryService.updateItemStatus(id, newStatus);
+        
         this.showSuccess(`Item ${id} status updated to ${newStatus}`, 'Status Updated');
-        this.applyFilters();
+        
+        // Refresh data to get the updated status
+        this.fetchPageData();
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
       }
     },
     showAddItemModal() {
@@ -788,15 +826,40 @@ export default {
       this.showAddModal = false;
       this.resetNewItem();
     },
-    addNewItem() {
-      const newItem = { ...this.newItem, id: `INV-${this.inventoryItems.length + 1}` };
-      if (this.featuresInput.trim()) {
-        newItem.features = this.featuresInput.split(',').map(feature => feature.trim());
+    async addNewItem() {
+      try {
+        this.startLoading('Creating new inventory item...');
+        
+        // Process features if entered
+        let features = [];
+        if (this.featuresInput.trim()) {
+          features = this.featuresInput.split(',').map(feature => feature.trim());
+        }
+        
+        // Format data for API
+        const formattedData = {
+          name: this.newItem.name,
+          category: this.newItem.category,
+          status: this.newItem.status,
+          rate: this.newItem.rate,
+          description: this.newItem.description,
+          features: features,
+          acquisition_date: this.newItem.acquisitionDate || null
+        };
+        
+        // Call API to create new item
+        await inventoryService.createInventoryItem(formattedData);
+        
+        this.showSuccess('New item added successfully!', 'Item Added');
+        this.closeAddModal();
+        
+        // Refresh the data
+        this.fetchPageData();
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.stopLoading();
       }
-      this.inventoryItems.push(newItem);
-      this.showSuccess('New item added successfully!', 'Item Added');
-      this.closeAddModal();
-      this.applyFilters();
     },
     resetNewItem() {
       this.newItem = {
@@ -811,6 +874,13 @@ export default {
       this.featuresInput = '';
     },
     refreshData() {
+      // Reset filters
+      this.searchQuery = '';
+      this.categoryFilter = 'all';
+      this.statusFilter = 'all';
+      this.pagination.currentPage = 1;
+      
+      // Fetch fresh data
       this.fetchPageData();
     },
     exportToCSV() {
@@ -822,7 +892,7 @@ export default {
         item.category,
         item.status,
         `$${item.rate}`,
-        item.acquisitionDate || ''
+        item.acquisition_date || ''
       ]);
       
       // Combine headers and data
@@ -874,7 +944,7 @@ export default {
           item.category,
           item.status,
           `$${item.rate}/day`,
-          item.acquisitionDate || 'Not specified'
+          item.acquisition_date || 'Not specified'
         ].forEach(cell => {
           printContents += `<td style="border: 1px solid #ddd; padding: 8px;">${cell}</td>`;
         });

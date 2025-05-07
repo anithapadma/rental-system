@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RentalController;
+use App\Http\Controllers\Api\InventoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,3 +40,11 @@ Route::put('/rentals/{id}', [RentalController::class, 'update']);
 Route::delete('/rentals/{id}', [RentalController::class, 'destroy']);
 Route::patch('/rentals/{id}/status', [RentalController::class, 'updateStatus']);
 Route::post('/rentals/{id}/return', [RentalController::class, 'returnRental']);
+
+// Inventory routes
+Route::get('/inventory', [InventoryController::class, 'index']);
+Route::post('/inventory', [InventoryController::class, 'store']);
+Route::get('/inventory/{id}', [InventoryController::class, 'show']);
+Route::put('/inventory/{id}', [InventoryController::class, 'update']);
+Route::delete('/inventory/{id}', [InventoryController::class, 'destroy']);
+Route::patch('/inventory/{id}/status', [InventoryController::class, 'updateStatus']);
