@@ -414,18 +414,59 @@ export default {
             sort: this.getSortParam()
           };
           const response = await rentalService.getRentals(params);
-          this.rentals = response.data || [];
-          this.totalRentals = response.meta?.total || this.rentals.length;
-          this.pagination.currentPage = response.meta?.current_page || 1;
-          this.pagination.totalPages = Math.ceil(this.totalRentals / (response.meta?.per_page || this.pagination.itemsPerPage));
+          
+          // Debug log to check response structure
+          console.log("API Response:", response);
+          
+          // Access the data properly - Axios nests the response in a data property
+          const responseData = response.data?.data || [];
+          const responseMeta = response.data?.meta;
+          
+          // Map API response fields to match component's expected property names
+          this.rentals = Array.isArray(responseData) ? responseData.map(rental => ({
+            id: rental.id,
+            customer: rental.customer,
+            items: rental.items,
+            startDate: rental.start_date,
+            dueDate: rental.due_date,
+            status: rental.status,
+            dailyRate: rental.daily_rate,
+            notes: rental.notes
+          })) : [];
+          
+          // Get pagination meta from the response
+          if (responseMeta) {
+            this.totalRentals = responseMeta.total || this.rentals.length;
+            this.pagination.currentPage = responseMeta.current_page || 1;
+            this.pagination.totalPages = responseMeta.last_page || Math.ceil(this.totalRentals / (responseMeta.per_page || this.pagination.itemsPerPage));
+          } else {
+            this.totalRentals = this.rentals.length;
+            this.pagination.totalPages = Math.ceil(this.totalRentals / this.pagination.itemsPerPage) || 1;
+          }
+          
           this.calculatePaginationDisplay();
         } else {
           const response = await rentalService.getRentals();
-          this.rentals = response.data || [];
+          // Access the data properly for client-side pagination as well
+          const responseData = response.data?.data || [];
+          
+          // Map API response fields for client-side pagination as well
+          this.rentals = Array.isArray(responseData) ? responseData.map(rental => ({
+            id: rental.id,
+            customer: rental.customer,
+            items: rental.items,
+            startDate: rental.start_date,
+            dueDate: rental.due_date,
+            status: rental.status,
+            dailyRate: rental.daily_rate,
+            notes: rental.notes
+          })) : [];
+          
           this.totalRentals = this.rentals.length;
           this.applyFilters();
         }
       } catch (error) {
+        console.error("Error fetching rental data:", error);
         this.handleError(error);
       } finally {
         this.stopLoading();
@@ -477,8 +518,23 @@ export default {
     async viewRental(rental) {
       try {
         this.startLoading(`Loading details for rental ${rental.id}...`);
-        const detailedRental = await rentalService.getRental(rental.id);
-        this.viewingRental = detailedRental.data || rental;
+        const response = await rentalService.getRental(rental.id);
+        
+        // Map API response fields to match component's expected property names
+        if (response.data) {
+          this.viewingRental = {
+            id: response.data.id,
+            customer: response.data.customer,
+            items: response.data.items,
+            startDate: response.data.start_date,
+            dueDate: response.data.due_date,
+            status: response.data.status,
+            dailyRate: response.data.daily_rate,
+            notes: response.data.notes
+          };
+        } else {
+          this.viewingRental = rental;
+        }
       } catch (error) {
         this.handleError(error);
       } finally {
