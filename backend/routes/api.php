@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\EmployeeTaskController;
 use App\Http\Controllers\Api\EmployeeDashboardController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\AgreementController;
 use App\Models\Category;
 
@@ -37,6 +38,28 @@ Route::get('/cors-test', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+// Analytics routes
+Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
+Route::get('/analytics/revenue/chart', [AnalyticsController::class, 'revenueChart']);
+Route::get('/analytics/rentals/types', [AnalyticsController::class, 'rentalTypeDistribution']);
+Route::get('/analytics/rentals/top-items', [AnalyticsController::class, 'topRentalItems']);
+Route::get('/analytics/revenue', [AnalyticsController::class, 'revenueAnalysis']);
+Route::get('/analytics/revenue/categories', [AnalyticsController::class, 'revenueByCategory']);
+Route::get('/analytics/revenue/locations', [AnalyticsController::class, 'revenueByLocation']);
+Route::get('/analytics/revenue/average-value', [AnalyticsController::class, 'averageRentalValue']);
+
+// Inventory analysis routes
+Route::get('/analytics/inventory/status', [AnalyticsController::class, 'inventoryStatus']);
+Route::get('/analytics/inventory/low-stock', [AnalyticsController::class, 'lowStockItems']);
+Route::get('/analytics/inventory/utilization', [AnalyticsController::class, 'utilizationRate']);
+Route::get('/analytics/inventory/top-performing', [AnalyticsController::class, 'topPerformingItems']);
+
+// Customer analysis routes
+Route::get('/analytics/customers/acquisition', [AnalyticsController::class, 'customerAcquisition']);
+Route::get('/analytics/customers/segments', [AnalyticsController::class, 'customerSegment']);
+Route::get('/analytics/customers/top', [AnalyticsController::class, 'topCustomers']);
+Route::get('/analytics/customers/retention', [AnalyticsController::class, 'customerRetention']);
 
 // Rental routes
 Route::get('/rentals', [RentalController::class, 'index']);

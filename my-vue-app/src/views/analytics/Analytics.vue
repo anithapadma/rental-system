@@ -20,94 +20,113 @@
     <div class="analytics-content">
       <!-- Performance Overview -->
       <div v-if="activeTab === 'overview'" class="tab-content">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #4299e1;">
-              <i class="fas fa-chart-line"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-title">Total Revenue</div>
-              <div class="stat-value">${{ formatNumber(revenueData.total) }}</div>
-              <div class="stat-trend" :class="{ 'up': revenueData.trend > 0, 'down': revenueData.trend < 0 }">
-                <i :class="revenueData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
-                {{ Math.abs(revenueData.trend) }}% from last month
-              </div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #48bb78;">
-              <i class="fas fa-users"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-title">Active Rentals</div>
-              <div class="stat-value">{{ formatNumber(rentalData.active) }}</div>
-              <div class="stat-trend" :class="{ 'up': rentalData.trend > 0, 'down': rentalData.trend < 0 }">
-                <i :class="rentalData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
-                {{ Math.abs(rentalData.trend) }}% from last month
-              </div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #ed8936;">
-              <i class="fas fa-boxes"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-title">Inventory Utilization</div>
-              <div class="stat-value">{{ inventoryData.utilization }}%</div>
-              <div class="stat-trend" :class="{ 'up': inventoryData.trend > 0, 'down': inventoryData.trend < 0 }">
-                <i :class="inventoryData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
-                {{ Math.abs(inventoryData.trend) }}% from last month
-              </div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon" style="background-color: #9f7aea;">
-              <i class="fas fa-file-contract"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-title">Completed Agreements</div>
-              <div class="stat-value">{{ formatNumber(agreementsData.completed) }}</div>
-              <div class="stat-trend" :class="{ 'up': agreementsData.trend > 0, 'down': agreementsData.trend < 0 }">
-                <i :class="agreementsData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
-                {{ Math.abs(agreementsData.trend) }}% from last month
-              </div>
-            </div>
-          </div>
+        <div v-if="isLoading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading analytics data...</p>
         </div>
-
-        <div class="charts-grid">
-          <div class="chart-card large">
-            <div class="chart-header">
-              <h3>Monthly Revenue</h3>
-              <select class="period-selector" v-model="revenuePeriod">
-                <option value="3">Last 3 months</option>
-                <option value="6">Last 6 months</option>
-                <option value="12">Last 12 months</option>
-              </select>
+        <div v-else-if="error" class="error-container">
+          <p>{{ error }}</p>
+          <button @click="loadOverviewData" class="retry-button">Retry</button>
+        </div>
+        <div v-else>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon" style="background-color: #4299e1;">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-title">Total Revenue</div>
+                <div class="stat-value">${{ formatNumber(revenueData.total) }}</div>
+                <div class="stat-trend" :class="{ 'up': revenueData.trend > 0, 'down': revenueData.trend < 0 }">
+                  <i :class="revenueData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                  {{ Math.abs(revenueData.trend) }}% from last month
+                </div>
+              </div>
             </div>
-            <div class="chart-body">
-              <LineChart :chartData="revenueChartData" />
+            
+            <div class="stat-card">
+              <div class="stat-icon" style="background-color: #48bb78;">
+                <i class="fas fa-users"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-title">Active Rentals</div>
+                <div class="stat-value">{{ formatNumber(rentalData.active) }}</div>
+                <div class="stat-trend" :class="{ 'up': rentalData.trend > 0, 'down': rentalData.trend < 0 }">
+                  <i :class="rentalData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                  {{ Math.abs(rentalData.trend) }}% from last month
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon" style="background-color: #ed8936;">
+                <i class="fas fa-boxes"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-title">Inventory Utilization</div>
+                <div class="stat-value">{{ inventoryData.utilization }}%</div>
+                <div class="stat-trend" :class="{ 'up': inventoryData.trend > 0, 'down': inventoryData.trend < 0 }">
+                  <i :class="inventoryData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                  {{ Math.abs(inventoryData.trend) }}% from last month
+                </div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon" style="background-color: #9f7aea;">
+                <i class="fas fa-file-contract"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-title">Completed Agreements</div>
+                <div class="stat-value">{{ formatNumber(agreementsData.completed) }}</div>
+                <div class="stat-trend" :class="{ 'up': agreementsData.trend > 0, 'down': agreementsData.trend < 0 }">
+                  <i :class="agreementsData.trend > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'"></i>
+                  {{ Math.abs(agreementsData.trend) }}% from last month
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Rental Type Distribution</h3>
+          <div class="charts-grid">
+            <div class="chart-card large">
+              <div class="chart-header">
+                <h3>Monthly Revenue</h3>
+                <select class="period-selector" v-model="revenuePeriod" @change="loadRevenueChartData">
+                  <option value="3">Last 3 months</option>
+                  <option value="6">Last 6 months</option>
+                  <option value="12">Last 12 months</option>
+                </select>
+              </div>
+              <div class="chart-body">
+                <div v-if="loadingCharts.revenue" class="chart-loading">
+                  <div class="loading-spinner small"></div>
+                </div>
+                <LineChart v-else :chartData="revenueChartData" />
+              </div>
             </div>
-            <div class="chart-body">
-              <DoughnutChart :chartData="rentalTypeChartData" />
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>Rental Type Distribution</h3>
+              </div>
+              <div class="chart-body">
+                <div v-if="loadingCharts.rentalType" class="chart-loading">
+                  <div class="loading-spinner small"></div>
+                </div>
+                <DoughnutChart v-else :chartData="rentalTypeChartData" />
+              </div>
             </div>
-          </div>
-          
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Top Rental Items</h3>
-            </div>
-            <div class="chart-body">
-              <BarChart :chartData="topItemsChartData" />
+            
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>Top Rental Items</h3>
+              </div>
+              <div class="chart-body">
+                <div v-if="loadingCharts.topItems" class="chart-loading">
+                  <div class="loading-spinner small"></div>
+                </div>
+                <BarChart v-else :chartData="topItemsChartData" />
+              </div>
             </div>
           </div>
         </div>
@@ -115,18 +134,29 @@
 
       <!-- Revenue Analysis -->
       <div v-if="activeTab === 'revenue'" class="tab-content">
-        <div class="charts-grid">
+        <div v-if="isLoadingRevenue" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading revenue analysis...</p>
+        </div>
+        <div v-else-if="revenueError" class="error-container">
+          <p>{{ revenueError }}</p>
+          <button @click="loadRevenueData" class="retry-button">Retry</button>
+        </div>
+        <div v-else class="charts-grid">
           <div class="chart-card large">
             <div class="chart-header">
               <h3>Revenue Breakdown</h3>
-              <select class="period-selector" v-model="revenueBreakdownPeriod">
+              <select class="period-selector" v-model="revenueBreakdownPeriod" @change="loadRevenueBreakdownData">
                 <option value="3">Last 3 months</option>
                 <option value="6">Last 6 months</option>
                 <option value="12">Last 12 months</option>
               </select>
             </div>
             <div class="chart-body">
-              <LineChart :chartData="revenueBreakdownChartData" />
+              <div v-if="loadingCharts.revenueBreakdown" class="chart-loading">
+                <div class="loading-spinner small"></div>
+              </div>
+              <LineChart v-else :chartData="revenueBreakdownChartData" />
             </div>
           </div>
 
@@ -135,7 +165,10 @@
               <h3>Revenue by Category</h3>
             </div>
             <div class="chart-body">
-              <DoughnutChart :chartData="revenueByCategoryChartData" />
+              <div v-if="loadingCharts.revenueByCategory" class="chart-loading">
+                <div class="loading-spinner small"></div>
+              </div>
+              <DoughnutChart v-else :chartData="revenueByCategoryChartData" />
             </div>
           </div>
           
@@ -144,7 +177,10 @@
               <h3>Revenue by Location</h3>
             </div>
             <div class="chart-body">
-              <BarChart :chartData="revenueByLocationChartData" />
+              <div v-if="loadingCharts.revenueByLocation" class="chart-loading">
+                <div class="loading-spinner small"></div>
+              </div>
+              <BarChart v-else :chartData="revenueByLocationChartData" />
             </div>
           </div>
 
@@ -153,7 +189,10 @@
               <h3>Average Rental Value</h3>
             </div>
             <div class="chart-body">
-              <LineChart :chartData="avgRentalValueChartData" />
+              <div v-if="loadingCharts.avgRentalValue" class="chart-loading">
+                <div class="loading-spinner small"></div>
+              </div>
+              <LineChart v-else :chartData="avgRentalValueChartData" />
             </div>
           </div>
         </div>
@@ -161,7 +200,15 @@
 
       <!-- Inventory Analysis -->
       <div v-if="activeTab === 'inventory'" class="tab-content">
-        <div class="charts-grid">
+        <div v-if="isLoadingInventory" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading inventory analysis...</p>
+        </div>
+        <div v-else-if="inventoryError" class="error-container">
+          <p>{{ inventoryError }}</p>
+          <button @click="loadInventoryData" class="retry-button">Retry</button>
+        </div>
+        <div v-else class="charts-grid">
           <div class="chart-card">
             <div class="chart-header">
               <h3>Inventory Status</h3>
@@ -223,7 +270,15 @@
       
       <!-- Customer Analysis -->
       <div v-if="activeTab === 'customers'" class="tab-content">
-        <div class="charts-grid">
+        <div v-if="isLoadingCustomer" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading customer analysis...</p>
+        </div>
+        <div v-else-if="customerError" class="error-container">
+          <p>{{ customerError }}</p>
+          <button @click="loadCustomerData" class="retry-button">Retry</button>
+        </div>
+        <div v-else class="charts-grid">
           <div class="chart-card">
             <div class="chart-header">
               <h3>Customer Acquisition</h3>
@@ -288,6 +343,7 @@
 import LineChart from '@/components/charts/LineChart.vue';
 import BarChart from '@/components/charts/BarChart.vue';
 import DoughnutChart from '@/components/charts/DoughnutChart.vue';
+import analyticsService from '@/services/analyticsService';
 
 export default {
   name: 'Analytics',
@@ -308,261 +364,623 @@ export default {
       revenuePeriod: '6',
       revenueBreakdownPeriod: '6',
       
+      // Loading state
+      isLoading: false,
+      isLoadingRevenue: false,
+      isLoadingInventory: false,
+      isLoadingCustomer: false,
+      loadingCharts: {
+        revenue: false,
+        rentalType: false,
+        topItems: false,
+        revenueBreakdown: false,
+        revenueByCategory: false,
+        revenueByLocation: false,
+        avgRentalValue: false,
+        inventoryStatus: false,
+        lowStockItems: false,
+        utilizationRate: false,
+        topPerformingItems: false,
+        customerAcquisition: false,
+        customerSegment: false,
+        topCustomers: false,
+        customerRetention: false
+      },
+      
+      // Error state
+      error: null,
+      revenueError: null,
+      inventoryError: null,
+      customerError: null,
+      
       // Overview data
       revenueData: {
-        total: 156482.50,
-        trend: 8.2
+        total: 0,
+        trend: 0
       },
       rentalData: {
-        active: 324,
-        trend: 12.5
+        active: 0,
+        trend: 0
       },
       inventoryData: {
-        utilization: 78,
-        trend: -2.3
+        utilization: 0,
+        trend: 0
       },
       agreementsData: {
-        completed: 1842,
-        trend: 5.7
+        completed: 0,
+        trend: 0
+      },
+      
+      // Chart data
+      revenueChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      rentalTypeChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      topItemsChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      
+      // Revenue analysis data
+      revenueBreakdownChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      revenueByCategoryChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      revenueByLocationChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      avgRentalValueChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      
+      // Inventory analysis data
+      inventoryStatusChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      lowStockItemsChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      utilizationRateChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
       },
       
       // Top performing inventory items
-      topPerformingItems: [
-        { name: 'Heavy Excavator XL200', type: 'Construction', rentals: 58, utilization: 92, revenue: 25420, roi: 185 },
-        { name: 'Portable Generator 5kW', type: 'Power', rentals: 124, utilization: 87, revenue: 18750, roi: 210 },
-        { name: 'Professional Camera Kit', type: 'Photography', rentals: 76, utilization: 84, revenue: 15640, roi: 175 },
-        { name: 'Industrial Pressure Washer', type: 'Cleaning', rentals: 95, utilization: 81, revenue: 12840, roi: 160 },
-        { name: 'Concrete Mixer 500L', type: 'Construction', rentals: 42, utilization: 79, revenue: 10950, roi: 145 }
-      ],
+      topPerformingItems: [],
       
-      // Top customers data
-      topCustomers: [
-        { name: 'Acme Construction Ltd.', totalRentals: 48, lifetimeValue: 42500, firstRental: '2024-06-15', lastRental: '2025-04-28' },
-        { name: 'GreenScape Landscaping', totalRentals: 36, lifetimeValue: 28750, firstRental: '2024-08-03', lastRental: '2025-04-22' },
-        { name: 'Elite Media Productions', totalRentals: 29, lifetimeValue: 22400, firstRental: '2024-09-12', lastRental: '2025-04-15' },
-        { name: 'Horizon Events Co.', totalRentals: 27, lifetimeValue: 19600, firstRental: '2024-07-25', lastRental: '2025-04-06' },
-        { name: 'Metro Property Services', totalRentals: 23, lifetimeValue: 17850, firstRental: '2024-10-08', lastRental: '2025-03-30' }
-      ]
+      // Customer analysis data
+      customerAcquisitionChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      customerSegmentChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      customerRetentionChartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      
+      // Top customers
+      topCustomers: []
     };
   },
-  computed: {
-    // Overview charts
-    revenueChartData() {
-      return {
-        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-        datasets: [
-          {
-            label: 'Revenue',
-            data: [21500, 23200, 20800, 26400, 24500, 29600],
-            borderColor: '#4299e1',
-            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-            borderWidth: 2,
-            fill: true
-          }
-        ]
-      };
-    },
-    rentalTypeChartData() {
-      return {
-        labels: ['Construction', 'Photography', 'Power', 'Events', 'Other'],
-        datasets: [
-          {
-            data: [42, 18, 15, 20, 5],
-            backgroundColor: [
-              'rgba(66, 153, 225, 0.8)',
-              'rgba(72, 187, 120, 0.8)',
-              'rgba(237, 137, 54, 0.8)',
-              'rgba(159, 122, 234, 0.8)',
-              'rgba(160, 174, 192, 0.8)'
-            ]
-          }
-        ]
-      };
-    },
-    topItemsChartData() {
-      return {
-        labels: ['Excavator', 'Generator', 'Camera', 'Washer', 'Mixer'],
-        datasets: [
-          {
-            label: 'Rental Count',
-            data: [58, 124, 76, 95, 42],
-            backgroundColor: 'rgba(72, 187, 120, 0.7)',
-            borderColor: 'rgba(72, 187, 120, 1)',
-            borderWidth: 1
-          }
-        ]
-      };
-    },
-    
-    // Revenue charts
-    revenueBreakdownChartData() {
-      return {
-        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-        datasets: [
-          {
-            label: 'Short-term Rentals',
-            data: [12500, 13200, 11800, 14400, 13500, 15600],
-            borderColor: '#4299e1',
-            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-            borderWidth: 2,
-            fill: true
-          },
-          {
-            label: 'Long-term Rentals',
-            data: [9000, 10000, 9000, 12000, 11000, 14000],
-            borderColor: '#48bb78',
-            backgroundColor: 'rgba(72, 187, 120, 0.1)',
-            borderWidth: 2,
-            fill: true
-          }
-        ]
-      };
-    },
-    revenueByCategoryChartData() {
-      return {
-        labels: ['Construction', 'Photography', 'Power', 'Events', 'Other'],
-        datasets: [
-          {
-            data: [68500, 32400, 27800, 21500, 6200],
-            backgroundColor: [
-              'rgba(66, 153, 225, 0.8)',
-              'rgba(72, 187, 120, 0.8)',
-              'rgba(237, 137, 54, 0.8)',
-              'rgba(159, 122, 234, 0.8)',
-              'rgba(160, 174, 192, 0.8)'
-            ]
-          }
-        ]
-      };
-    },
-    revenueByLocationChartData() {
-      return {
-        labels: ['North', 'South', 'East', 'West', 'Central'],
-        datasets: [
-          {
-            label: 'Revenue',
-            data: [45200, 38600, 27400, 31500, 13800],
-            backgroundColor: 'rgba(159, 122, 234, 0.7)',
-            borderColor: 'rgba(159, 122, 234, 1)',
-            borderWidth: 1
-          }
-        ]
-      };
-    },
-    avgRentalValueChartData() {
-      return {
-        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-        datasets: [
-          {
-            label: 'Average Rental Value',
-            data: [425, 438, 452, 468, 482, 495],
-            borderColor: '#ed8936',
-            backgroundColor: 'rgba(237, 137, 54, 0.1)',
-            borderWidth: 2,
-            fill: true
-          }
-        ]
-      };
-    },
-    
-    // Inventory charts
-    inventoryStatusChartData() {
-      return {
-        labels: ['Available', 'Rented', 'Maintenance', 'Reserved'],
-        datasets: [
-          {
-            data: [35, 42, 15, 8],
-            backgroundColor: [
-              'rgba(72, 187, 120, 0.8)',
-              'rgba(66, 153, 225, 0.8)',
-              'rgba(237, 137, 54, 0.8)',
-              'rgba(159, 122, 234, 0.8)'
-            ]
-          }
-        ]
-      };
-    },
-    lowStockItemsChartData() {
-      return {
-        labels: ['Generators', 'Cameras', 'Speakers', 'Lights', 'Projectors'],
-        datasets: [
-          {
-            label: 'Available Stock',
-            data: [3, 2, 4, 5, 3],
-            backgroundColor: 'rgba(237, 137, 54, 0.7)',
-            borderColor: 'rgba(237, 137, 54, 1)',
-            borderWidth: 1
-          }
-        ]
-      };
-    },
-    utilizationRateChartData() {
-      return {
-        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-        datasets: [
-          {
-            label: 'Utilization Rate %',
-            data: [72, 68, 74, 76, 80, 78],
-            borderColor: '#9f7aea',
-            backgroundColor: 'rgba(159, 122, 234, 0.1)',
-            borderWidth: 2,
-            fill: true
-          }
-        ]
-      };
-    },
-    
-    // Customer charts
-    customerAcquisitionChartData() {
-      return {
-        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-        datasets: [
-          {
-            label: 'New Customers',
-            data: [24, 18, 32, 28, 34, 30],
-            borderColor: '#4299e1',
-            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-            borderWidth: 2,
-            fill: true
-          }
-        ]
-      };
-    },
-    customerSegmentChartData() {
-      return {
-        labels: ['Business', 'Individual', 'Government', 'Non-profit'],
-        datasets: [
-          {
-            data: [45, 32, 18, 5],
-            backgroundColor: [
-              'rgba(66, 153, 225, 0.8)',
-              'rgba(72, 187, 120, 0.8)',
-              'rgba(237, 137, 54, 0.8)',
-              'rgba(159, 122, 234, 0.8)'
-            ]
-          }
-        ]
-      };
-    },
-    customerRetentionChartData() {
-      return {
-        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-        datasets: [
-          {
-            label: 'Retention Rate %',
-            data: [68, 72, 70, 74, 76, 78],
-            borderColor: '#48bb78',
-            backgroundColor: 'rgba(72, 187, 120, 0.1)',
-            borderWidth: 2,
-            fill: true
-          }
-        ]
-      };
+  created() {
+    // Load initial data when component is created
+    this.loadOverviewData();
+  },
+  watch: {
+    // Watch for tab changes to load appropriate data
+    activeTab(newTab) {
+      if (newTab === 'overview') {
+        this.loadOverviewData();
+      } else if (newTab === 'revenue') {
+        this.loadRevenueData();
+      } else if (newTab === 'inventory') {
+        this.loadInventoryData();
+      } else if (newTab === 'customers') {
+        this.loadCustomerData();
+      }
     }
   },
   methods: {
     formatNumber(value) {
       return new Intl.NumberFormat('en-US').format(value);
+    },
+    
+    // Overview data loading
+    async loadOverviewData() {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        const response = await analyticsService.getOverviewData();
+        const data = response.data;
+        
+        // Update overview metrics
+        this.revenueData = data.revenue;
+        this.rentalData = data.rental;
+        this.inventoryData = data.inventory;
+        this.agreementsData = data.agreements;
+        
+        // Load chart data for overview tab
+        this.loadRevenueChartData();
+        this.loadRentalTypeData();
+        this.loadTopItemsData();
+      } catch (err) {
+        console.error('Error loading overview data:', err);
+        this.error = 'Failed to load analytics data. Please try again.';
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    // Chart data loading for overview tab
+    async loadRevenueChartData() {
+      this.loadingCharts.revenue = true;
+      
+      try {
+        const response = await analyticsService.getRevenueChartData(parseInt(this.revenuePeriod));
+        const data = response.data;
+        
+        this.revenueChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Revenue',
+              data: data.values,
+              borderColor: '#4299e1',
+              backgroundColor: 'rgba(66, 153, 225, 0.1)',
+              borderWidth: 2,
+              fill: true
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading revenue chart data:', err);
+      } finally {
+        this.loadingCharts.revenue = false;
+      }
+    },
+    
+    async loadRentalTypeData() {
+      this.loadingCharts.rentalType = true;
+      
+      try {
+        const response = await analyticsService.getRentalTypeDistributionData();
+        const data = response.data;
+        
+        this.rentalTypeChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              data: data.values,
+              backgroundColor: [
+                'rgba(66, 153, 225, 0.8)',
+                'rgba(72, 187, 120, 0.8)',
+                'rgba(237, 137, 54, 0.8)',
+                'rgba(159, 122, 234, 0.8)',
+                'rgba(160, 174, 192, 0.8)'
+              ]
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading rental type data:', err);
+      } finally {
+        this.loadingCharts.rentalType = false;
+      }
+    },
+    
+    async loadTopItemsData() {
+      this.loadingCharts.topItems = true;
+      
+      try {
+        const response = await analyticsService.getTopRentalItemsData();
+        const data = response.data;
+        
+        this.topItemsChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Rental Count',
+              data: data.values,
+              backgroundColor: 'rgba(72, 187, 120, 0.7)',
+              borderColor: 'rgba(72, 187, 120, 1)',
+              borderWidth: 1
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading top items data:', err);
+      } finally {
+        this.loadingCharts.topItems = false;
+      }
+    },
+    
+    // Revenue analysis data loading
+    async loadRevenueData() {
+      this.isLoadingRevenue = true;
+      this.revenueError = null;
+      
+      try {
+        // Load all revenue analysis charts
+        await Promise.all([
+          this.loadRevenueBreakdownData(),
+          this.loadRevenueByCategoryData(),
+          this.loadRevenueByLocationData(),
+          this.loadAverageRentalValueData()
+        ]);
+      } catch (err) {
+        console.error('Error loading revenue analysis data:', err);
+        this.revenueError = 'Failed to load revenue analysis data. Please try again.';
+      } finally {
+        this.isLoadingRevenue = false;
+      }
+    },
+    
+    // Revenue analysis chart data loading
+    async loadRevenueBreakdownData() {
+      this.loadingCharts.revenueBreakdown = true;
+      
+      try {
+        const response = await analyticsService.getRevenueAnalysisData(parseInt(this.revenueBreakdownPeriod));
+        const data = response.data;
+        
+        this.revenueBreakdownChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Short-term Rentals',
+              data: data.shortTerm,
+              borderColor: '#4299e1',
+              backgroundColor: 'rgba(66, 153, 225, 0.1)',
+              borderWidth: 2,
+              fill: true
+            },
+            {
+              label: 'Long-term Rentals',
+              data: data.longTerm,
+              borderColor: '#48bb78',
+              backgroundColor: 'rgba(72, 187, 120, 0.1)',
+              borderWidth: 2,
+              fill: true
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading revenue breakdown data:', err);
+      } finally {
+        this.loadingCharts.revenueBreakdown = false;
+      }
+    },
+    
+    async loadRevenueByCategoryData() {
+      this.loadingCharts.revenueByCategory = true;
+      
+      try {
+        const response = await analyticsService.getRevenueByCategoryData();
+        const data = response.data;
+        
+        this.revenueByCategoryChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              data: data.values,
+              backgroundColor: [
+                'rgba(66, 153, 225, 0.8)',
+                'rgba(72, 187, 120, 0.8)',
+                'rgba(237, 137, 54, 0.8)',
+                'rgba(159, 122, 234, 0.8)',
+                'rgba(160, 174, 192, 0.8)'
+              ]
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading revenue by category data:', err);
+      } finally {
+        this.loadingCharts.revenueByCategory = false;
+      }
+    },
+    
+    async loadRevenueByLocationData() {
+      this.loadingCharts.revenueByLocation = true;
+      
+      try {
+        const response = await analyticsService.getRevenueByLocationData();
+        const data = response.data;
+        
+        this.revenueByLocationChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Revenue',
+              data: data.values,
+              backgroundColor: 'rgba(159, 122, 234, 0.7)',
+              borderColor: 'rgba(159, 122, 234, 1)',
+              borderWidth: 1
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading revenue by location data:', err);
+      } finally {
+        this.loadingCharts.revenueByLocation = false;
+      }
+    },
+    
+    async loadAverageRentalValueData() {
+      this.loadingCharts.avgRentalValue = true;
+      
+      try {
+        const response = await analyticsService.getAverageRentalValueData();
+        const data = response.data;
+        
+        this.avgRentalValueChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Average Rental Value',
+              data: data.values,
+              borderColor: '#ed8936',
+              backgroundColor: 'rgba(237, 137, 54, 0.1)',
+              borderWidth: 2,
+              fill: true
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading average rental value data:', err);
+      } finally {
+        this.loadingCharts.avgRentalValue = false;
+      }
+    },
+    
+    // Inventory analysis data loading
+    async loadInventoryData() {
+      this.isLoadingInventory = true;
+      this.inventoryError = null;
+      
+      try {
+        // Load all inventory analysis charts
+        await Promise.all([
+          this.loadInventoryStatusData(),
+          this.loadLowStockItemsData(),
+          this.loadUtilizationRateData(),
+          this.loadTopPerformingItemsData()
+        ]);
+      } catch (err) {
+        console.error('Error loading inventory analysis data:', err);
+        this.inventoryError = 'Failed to load inventory analysis data. Please try again.';
+      } finally {
+        this.isLoadingInventory = false;
+      }
+    },
+    
+    // Inventory analysis chart data loading
+    async loadInventoryStatusData() {
+      this.loadingCharts.inventoryStatus = true;
+      
+      try {
+        const response = await analyticsService.getInventoryStatusData();
+        const data = response.data;
+        
+        this.inventoryStatusChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              data: data.values,
+              backgroundColor: [
+                'rgba(72, 187, 120, 0.8)',
+                'rgba(66, 153, 225, 0.8)',
+                'rgba(237, 137, 54, 0.8)',
+                'rgba(159, 122, 234, 0.8)'
+              ]
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading inventory status data:', err);
+      } finally {
+        this.loadingCharts.inventoryStatus = false;
+      }
+    },
+    
+    async loadLowStockItemsData() {
+      this.loadingCharts.lowStockItems = true;
+      
+      try {
+        const response = await analyticsService.getLowStockItemsData();
+        const data = response.data;
+        
+        this.lowStockItemsChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Available Stock',
+              data: data.values,
+              backgroundColor: 'rgba(237, 137, 54, 0.7)',
+              borderColor: 'rgba(237, 137, 54, 1)',
+              borderWidth: 1
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading low stock items data:', err);
+      } finally {
+        this.loadingCharts.lowStockItems = false;
+      }
+    },
+    
+    async loadUtilizationRateData() {
+      this.loadingCharts.utilizationRate = true;
+      
+      try {
+        const response = await analyticsService.getUtilizationRateData();
+        const data = response.data;
+        
+        this.utilizationRateChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Utilization Rate %',
+              data: data.values,
+              borderColor: '#9f7aea',
+              backgroundColor: 'rgba(159, 122, 234, 0.1)',
+              borderWidth: 2,
+              fill: true
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading utilization rate data:', err);
+      } finally {
+        this.loadingCharts.utilizationRate = false;
+      }
+    },
+    
+    async loadTopPerformingItemsData() {
+      this.loadingCharts.topPerformingItems = true;
+      
+      try {
+        const response = await analyticsService.getTopPerformingItemsData();
+        this.topPerformingItems = response.data.items;
+      } catch (err) {
+        console.error('Error loading top performing items data:', err);
+      } finally {
+        this.loadingCharts.topPerformingItems = false;
+      }
+    },
+    
+    // Customer analysis data loading
+    async loadCustomerData() {
+      this.isLoadingCustomer = true;
+      this.customerError = null;
+      
+      try {
+        // Load all customer analysis charts
+        await Promise.all([
+          this.loadCustomerAcquisitionData(),
+          this.loadCustomerSegmentData(),
+          this.loadTopCustomersData(),
+          this.loadCustomerRetentionData()
+        ]);
+      } catch (err) {
+        console.error('Error loading customer analysis data:', err);
+        this.customerError = 'Failed to load customer analysis data. Please try again.';
+      } finally {
+        this.isLoadingCustomer = false;
+      }
+    },
+    
+    // Customer analysis chart data loading
+    async loadCustomerAcquisitionData() {
+      this.loadingCharts.customerAcquisition = true;
+      
+      try {
+        const response = await analyticsService.getCustomerAcquisitionData();
+        const data = response.data;
+        
+        this.customerAcquisitionChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'New Customers',
+              data: data.values,
+              borderColor: '#4299e1',
+              backgroundColor: 'rgba(66, 153, 225, 0.1)',
+              borderWidth: 2,
+              fill: true
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading customer acquisition data:', err);
+      } finally {
+        this.loadingCharts.customerAcquisition = false;
+      }
+    },
+    
+    async loadCustomerSegmentData() {
+      this.loadingCharts.customerSegment = true;
+      
+      try {
+        const response = await analyticsService.getCustomerSegmentData();
+        const data = response.data;
+        
+        this.customerSegmentChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              data: data.values,
+              backgroundColor: [
+                'rgba(66, 153, 225, 0.8)',
+                'rgba(72, 187, 120, 0.8)',
+                'rgba(237, 137, 54, 0.8)',
+                'rgba(159, 122, 234, 0.8)'
+              ]
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading customer segment data:', err);
+      } finally {
+        this.loadingCharts.customerSegment = false;
+      }
+    },
+    
+    async loadTopCustomersData() {
+      this.loadingCharts.topCustomers = true;
+      
+      try {
+        const response = await analyticsService.getTopCustomersData();
+        this.topCustomers = response.data.customers;
+      } catch (err) {
+        console.error('Error loading top customers data:', err);
+      } finally {
+        this.loadingCharts.topCustomers = false;
+      }
+    },
+    
+    async loadCustomerRetentionData() {
+      this.loadingCharts.customerRetention = true;
+      
+      try {
+        const response = await analyticsService.getCustomerRetentionData();
+        const data = response.data;
+        
+        this.customerRetentionChartData = {
+          labels: data.labels,
+          datasets: [
+            {
+              label: 'Retention Rate %',
+              data: data.values,
+              borderColor: '#48bb78',
+              backgroundColor: 'rgba(72, 187, 120, 0.1)',
+              borderWidth: 2,
+              fill: true
+            }
+          ]
+        };
+      } catch (err) {
+        console.error('Error loading customer retention data:', err);
+      } finally {
+        this.loadingCharts.customerRetention = false;
+      }
     }
   }
 };
@@ -627,8 +1045,61 @@ export default {
   color: #f56565;
 }
 
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #e53e3e;
+}
+
+.retry-button {
+  margin-top: 12px;
+  padding: 6px 12px;
+  background-color: #3182ce;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(66, 153, 225, 0.3);
+  border-top-color: #3182ce;
+  border-radius: 50%;
+  animation: spin 1s ease-in-out infinite;
+}
+
+.loading-spinner.small {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
