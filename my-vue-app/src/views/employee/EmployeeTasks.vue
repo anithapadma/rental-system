@@ -9,7 +9,7 @@
       <div class="tasks-filters">
         <div class="filter-group">
           <label for="status-filter">Status:</label>
-          <select id="status-filter" v-model="statusFilter">
+          <select id="status-filter" v-model="statusFilter" @change="fetchTasks">
             <option value="all">All</option>
             <option value="pending">Pending</option>
             <option value="in-progress">In Progress</option>
@@ -18,7 +18,7 @@
         </div>
         <div class="filter-group">
           <label for="priority-filter">Priority:</label>
-          <select id="priority-filter" v-model="priorityFilter">
+          <select id="priority-filter" v-model="priorityFilter" @change="fetchTasks">
             <option value="all">All</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
@@ -30,12 +30,27 @@
             type="text" 
             placeholder="Search tasks..." 
             v-model="searchQuery"
+            @input="handleSearch"
           >
         </div>
       </div>
 
-      <div class="tasks-list">
-        <div class="task-card" v-for="(task, index) in filteredTasks" :key="index">
+      <!-- Loading spinner when tasks are being fetched -->
+      <div v-if="isLoading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading tasks...</p>
+      </div>
+
+      <!-- Error message if API call fails -->
+      <div v-else-if="error" class="error-container">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>{{ error }}</p>
+        <button @click="fetchTasks" class="retry-button">Try Again</button>
+      </div>
+
+      <!-- Task list display when data is loaded -->
+      <div v-else class="tasks-list">
+        <div class="task-card" v-for="(task, index) in tasks" :key="task.id || index">
           <div class="task-header">
             <h3 class="task-title">{{ task.title }}</h3>
             <div class="task-badges">
@@ -60,15 +75,21 @@
             <button 
               class="action-button" 
               :class="{ 'disabled': task.status === 'completed' }"
-              @click="updateTaskStatus(index)"
+              @click="updateTaskStatus(task)"
+              :disabled="isUpdating === task.id"
             >
-              {{ task.status === 'pending' ? 'Start Task' : 
-                 task.status === 'in-progress' ? 'Complete Task' : 'Completed' }}
+              <span v-if="isUpdating === task.id">
+                <i class="fas fa-spinner fa-spin"></i> Updating...
+              </span>
+              <span v-else>
+                {{ task.status === 'pending' ? 'Start Task' : 
+                   task.status === 'in-progress' ? 'Complete Task' : 'Completed' }}
+              </span>
             </button>
           </div>
         </div>
 
-        <div class="no-tasks" v-if="filteredTasks.length === 0">
+        <div class="no-tasks" v-if="tasks.length === 0">
           <i class="fas fa-clipboard-check"></i>
           <p>No tasks found with current filters</p>
         </div>
@@ -79,6 +100,7 @@
 
 <script>
 import EmployeeLayout from '@/components/EmployeeLayout.vue'
+import employeeTasksService from '@/services/employeeTasksService'
 
 export default {
   name: 'EmployeeTasks',
@@ -90,81 +112,97 @@ export default {
       searchQuery: '',
       statusFilter: 'all',
       priorityFilter: 'all',
-      tasks: [
-        {
-          title: 'Process rental request #4582',
-          description: 'Review and approve rental request from John Smith for equipment rental on May 10th.',
-          status: 'pending',
-          priority: 'high',
-          dueDate: 'May 6, 2025',
-          customer: 'John Smith'
-        },
-        {
-          title: 'Update inventory items',
-          description: 'Check physical inventory against system records and update any discrepancies.',
-          status: 'completed',
-          priority: 'medium',
-          dueDate: 'May 4, 2025'
-        },
-        {
-          title: 'Contact customer #12458',
-          description: 'Follow up with Sarah Johnson about her rental experience and collect feedback.',
-          status: 'pending',
-          priority: 'medium',
-          dueDate: 'May 6, 2025',
-          customer: 'Sarah Johnson'
-        },
-        {
-          title: 'Prepare monthly equipment report',
-          description: 'Compile data on equipment usage, maintenance, and availability for the monthly report.',
-          status: 'in-progress',
-          priority: 'medium',
-          dueDate: 'May 7, 2025'
-        },
-        {
-          title: 'Schedule maintenance for item #873',
-          description: 'Contact maintenance team to schedule routine service for the portable generator.',
-          status: 'pending',
-          priority: 'low',
-          dueDate: 'May 10, 2025'
-        }
-      ]
+      tasks: [],
+      isLoading: false,
+      isUpdating: null,
+      error: null,
+      searchTimeout: null
     }
   },
-  computed: {
-    filteredTasks() {
-      return this.tasks.filter(task => {
-        // Status filter
-        if (this.statusFilter !== 'all' && task.status !== this.statusFilter) {
-          return false;
-        }
-        
-        // Priority filter
-        if (this.priorityFilter !== 'all' && task.priority !== this.priorityFilter) {
-          return false;
-        }
-        
-        // Search query
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase();
-          return task.title.toLowerCase().includes(query) || 
-                 task.description.toLowerCase().includes(query) ||
-                 (task.customer && task.customer.toLowerCase().includes(query));
-        }
-        
-        return true;
-      });
-    }
+  created() {
+    this.fetchTasks();
   },
   methods: {
-    updateTaskStatus(index) {
-      const task = this.tasks[index];
-      if (task.status === 'pending') {
-        task.status = 'in-progress';
-      } else if (task.status === 'in-progress') {
-        task.status = 'completed';
+    async fetchTasks() {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        // Prepare query parameters
+        const params = {};
+        
+        if (this.statusFilter !== 'all') {
+          params.status = this.statusFilter;
+        }
+        
+        if (this.priorityFilter !== 'all') {
+          params.priority = this.priorityFilter;
+        }
+        
+        if (this.searchQuery) {
+          params.search = this.searchQuery;
+        }
+        
+        // Fetch data from API
+        const response = await employeeTasksService.getTasks(params);
+        
+        // Update component data with API response
+        this.tasks = response.data.data;
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        this.error = 'Failed to load tasks. Please try again.';
+      } finally {
+        this.isLoading = false;
       }
-      // No action if already completed
+    },
+    
+    handleSearch() {
+      // Debounce search to prevent too many API calls
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+      }
+      
+      this.searchTimeout = setTimeout(() => {
+        this.fetchTasks();
+      }, 500);
+    },
+    
+    async updateTaskStatus(task) {
+      if (task.status === 'completed') return;
+      
+      this.isUpdating = task.id;
+      
+      try {
+        let newStatus = task.status === 'pending' ? 'in-progress' : 'completed';
+        
+        // Call the API to update status
+        const response = await employeeTasksService.updateTaskStatus(task.id, newStatus);
+        
+        // Update local task data if successful
+        if (response.data.status === 'success') {
+          task.status = newStatus;
+          
+          // Show success notification if you have one
+          if (this.$notifications) {
+            this.$notifications.add({
+              type: 'success',
+              message: `Task status updated to ${newStatus}`
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error updating task status:', err);
+        
+        // Show error notification if you have one
+        if (this.$notifications) {
+          this.$notifications.add({
+            type: 'error',
+            message: 'Failed to update task status'
+          });
+        }
+      } finally {
+        this.isUpdating = null;
+      }
     }
   }
 }
@@ -377,6 +415,60 @@ export default {
 
 .no-tasks p {
   font-size: 1.1rem;
+}
+
+/* New loading and error styles */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 0;
+  color: #64748b;
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #2563eb;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container {
+  text-align: center;
+  padding: 30px;
+  background-color: #fee2e2;
+  border-radius: 8px;
+  color: #b91c1c;
+  margin: 20px 0;
+}
+
+.error-container i {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.retry-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  margin-top: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.retry-button:hover {
+  background-color: #dc2626;
 }
 
 @media (max-width: 640px) {

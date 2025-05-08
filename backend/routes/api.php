@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\RentalController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\EmployeeTaskController;
 use App\Http\Controllers\AgreementController;
 use App\Models\Category;
 
@@ -78,6 +79,12 @@ Route::delete('/settings/categories/{id}', [CategoryController::class, 'destroy'
 Route::get('/settings', [SettingsController::class, 'index']);
 Route::put('/settings/company', [SettingsController::class, 'updateCompanyInfo']);
 Route::put('/settings/rental', [SettingsController::class, 'updateRentalSettings']);
+
+// Employee Task routes
+Route::get('/employee/tasks', [EmployeeTaskController::class, 'index']);
+Route::get('/employee/tasks/{id}', [EmployeeTaskController::class, 'show']);
+Route::patch('/employee/tasks/{id}/status', [EmployeeTaskController::class, 'updateStatus']);
+Route::post('/employee/tasks/{id}/complete', [EmployeeTaskController::class, 'complete']);
 
 // Debug routes
 Route::get('/debug/categories', function () {

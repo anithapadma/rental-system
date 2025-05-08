@@ -9,15 +9,9 @@ const api = axios.create({
   }
 });
 
-// For debugging
-console.log('API Base URL:', process.env.VUE_APP_API_URL);
-
 // Request interceptor for API calls
 api.interceptors.request.use(
   config => {
-    // Log the full URL for debugging
-    console.log('Making API request to:', config.baseURL + config.url);
-    
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

@@ -1,90 +1,45 @@
-import axios from 'axios';
+import api from './api';
 
-const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:8000/api';
-
-export default {
-  /**
-   * Fetch all inventory items with optional filtering and pagination
-   * @param {Object} params - Query parameters for filtering and pagination
-   * @returns {Promise} - Promise with inventory items data
-   */
+const inventoryService = {
+  // Get all inventory items with optional filtering/pagination params
   getInventoryItems(params = {}) {
-    return axios.get(`${API_URL}/inventory`, { params });
-  },
-  
-  /**
-   * Fetch a single inventory item by ID
-   * @param {string} id - The inventory item ID
-   * @returns {Promise} - Promise with inventory item data
-   */
-  getInventoryItem(id) {
-    return axios.get(`${API_URL}/inventory/${id}`);
-  },
-  
-  /**
-   * Create a new inventory item
-   * @param {Object} itemData - The inventory item data
-   * @returns {Promise} - Promise with created item data
-   */
-  createInventoryItem(itemData) {
-    return axios.post(`${API_URL}/inventory`, itemData);
-  },
-  
-  /**
-   * Update an inventory item
-   * @param {string} id - The inventory item ID
-   * @param {Object} itemData - The updated inventory item data
-   * @returns {Promise} - Promise with updated item data
-   */
-  updateInventoryItem(id, itemData) {
-    return axios.put(`${API_URL}/inventory/${id}`, itemData);
-  },
-  
-  /**
-   * Update the status of an inventory item
-   * @param {string} id - The inventory item ID
-   * @param {string} status - The new status
-   * @returns {Promise} - Promise with updated item data
-   */
-  updateItemStatus(id, status) {
-    return axios.patch(`${API_URL}/inventory/${id}/status`, { status });
-  },
-  
-  /**
-   * Delete an inventory item
-   * @param {string} id - The inventory item ID
-   * @returns {Promise} - Promise with deletion confirmation
-   */
-  deleteInventoryItem(id) {
-    return axios.delete(`${API_URL}/inventory/${id}`);
+    return api.get('/inventory', { params });
   },
 
-  /**
-   * Fetch all employee inventory items with optional filtering and pagination
-   * @param {Object} params - Query parameters for filtering and pagination
-   * @returns {Promise} - Promise with employee inventory items data
-   */
-  getEmployeeInventory(params = {}) {
-    return axios.get(`${API_URL}/employee-inventory`, { params });
+  // Get a specific inventory item by ID
+  getInventoryItem(id) {
+    return api.get(`/inventory/${id}`);
+  },
+
+  // Create a new inventory item
+  createInventoryItem(inventoryData) {
+    return api.post('/inventory', inventoryData);
+  },
+
+  // Update an existing inventory item
+  updateInventoryItem(id, inventoryData) {
+    return api.put(`/inventory/${id}`, inventoryData);
+  },
+
+  // Delete an inventory item
+  deleteInventoryItem(id) {
+    return api.delete(`/inventory/${id}`);
+  },
+
+  // Get employee-specific inventory items (if different from general inventory)
+  getEmployeeInventoryItems(params = {}) {
+    return api.get('/employee-inventory', { params });
   },
   
-  /**
-   * Assign an inventory item to an employee
-   * @param {string} id - The inventory item ID
-   * @param {Object} assignmentData - The assignment data
-   * @returns {Promise} - Promise with assigned item data
-   */
-  assignItemToEmployee(id, assignmentData) {
-    return axios.post(`${API_URL}/inventory/${id}/assign`, assignmentData);
+  // Check out an inventory item
+  checkoutItem(id, checkoutData) {
+    return api.post(`/inventory/${id}/checkout`, checkoutData);
   },
   
-  /**
-   * Return an inventory item from an employee
-   * @param {string} id - The inventory item ID
-   * @param {Object} returnData - The return data including condition and notes
-   * @returns {Promise} - Promise with returned item data
-   */
-  returnItemFromEmployee(id, returnData) {
-    return axios.post(`${API_URL}/inventory/${id}/return`, returnData);
+  // Check in a returned inventory item
+  checkinItem(id, checkinData) {
+    return api.post(`/inventory/${id}/checkin`, checkinData);
   }
-}
+};
+
+export default inventoryService;
