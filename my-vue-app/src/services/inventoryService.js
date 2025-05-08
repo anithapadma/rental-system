@@ -57,5 +57,34 @@ export default {
    */
   deleteInventoryItem(id) {
     return axios.delete(`${API_URL}/inventory/${id}`);
+  },
+
+  /**
+   * Fetch all employee inventory items with optional filtering and pagination
+   * @param {Object} params - Query parameters for filtering and pagination
+   * @returns {Promise} - Promise with employee inventory items data
+   */
+  getEmployeeInventory(params = {}) {
+    return axios.get(`${API_URL}/employee-inventory`, { params });
+  },
+  
+  /**
+   * Assign an inventory item to an employee
+   * @param {string} id - The inventory item ID
+   * @param {Object} assignmentData - The assignment data
+   * @returns {Promise} - Promise with assigned item data
+   */
+  assignItemToEmployee(id, assignmentData) {
+    return axios.post(`${API_URL}/inventory/${id}/assign`, assignmentData);
+  },
+  
+  /**
+   * Return an inventory item from an employee
+   * @param {string} id - The inventory item ID
+   * @param {Object} returnData - The return data including condition and notes
+   * @returns {Promise} - Promise with returned item data
+   */
+  returnItemFromEmployee(id, returnData) {
+    return axios.post(`${API_URL}/inventory/${id}/return`, returnData);
   }
 }

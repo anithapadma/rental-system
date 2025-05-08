@@ -236,4 +236,163 @@ class InventoryController extends Controller
             ], $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ? 404 : 500);
         }
     }
+
+    /**
+     * Display a listing of inventory items assigned to employees.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function employeeInventory(Request $request)
+    {
+        try {
+            // Parse query parameters for pagination
+            $perPage = $request->input('per_page', 10);
+            $page = $request->input('page', 1);
+            $search = $request->input('search');
+            $employeeId = $request->input('employee_id');
+            $sort = $request->input('sort', 'name,asc');
+
+            // Parse sort parameter
+            $sortParts = explode(',', $sort);
+            $sortColumn = $sortParts[0] ?? 'name';
+            $sortDirection = $sortParts[1] ?? 'asc';
+
+            // Build query
+            $query = Inventory::query();
+            
+            // Filter by assigned to employee status
+            $query->where('status', 'Assigned');
+            
+            // Filter by specific employee if provided
+            if (!empty($employeeId)) {
+                $query->where('assigned_to', $employeeId);
+            }
+
+            // Apply search
+            if (!empty($search)) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('id', 'like', '%' . $search . '%')
+                          ->orWhere('name', 'like', '%' . $search . '%')
+                          ->orWhere('category', 'like', '%' . $search . '%')
+                          ->orWhere('assigned_to', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Apply sorting
+            if (in_array($sortColumn, ['id', 'name', 'category', 'status', 'assigned_to', 'assigned_date'])) {
+                $query->orderBy($sortColumn, $sortDirection === 'asc' ? 'asc' : 'desc');
+            } else {
+                $query->orderBy('name', 'asc');
+            }
+
+            // Get paginated results
+            $inventoryItems = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Return results with pagination metadata
+            return response()->json([
+                'data' => $inventoryItems->items(),
+                'meta' => [
+                    'current_page' => $inventoryItems->currentPage(),
+                    'per_page' => $inventoryItems->perPage(),
+                    'total' => $inventoryItems->total(),
+                    'last_page' => $inventoryItems->lastPage(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error fetching employee inventory items: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Assign an inventory item to an employee.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function assignToEmployee(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'employee_id' => 'required|string',
+                'employee_name' => 'required|string',
+                'assigned_date' => 'required|date',
+                'expected_return_date' => 'nullable|date',
+                'notes' => 'nullable|string',
+            ]);
+
+            $item = Inventory::findOrFail($id);
+            
+            // Update item with assignment details
+            $item->status = 'Assigned';
+            $item->assigned_to = $request->employee_id;
+            $item->assigned_to_name = $request->employee_name;
+            $item->assigned_date = $request->assigned_date;
+            $item->expected_return_date = $request->expected_return_date;
+            $item->assignment_notes = $request->notes;
+            $item->save();
+
+            return response()->json([
+                'message' => 'Inventory item assigned to employee successfully',
+                'data' => $item
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error assigning inventory item: ' . $e->getMessage()
+            ], $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ? 404 : 500);
+        }
+    }
+    
+    /**
+     * Return an inventory item from an employee.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function returnFromEmployee(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'return_date' => 'required|date',
+                'condition' => 'required|string|in:Excellent,Good,Fair,Poor,Damaged',
+                'notes' => 'nullable|string',
+            ]);
+
+            $item = Inventory::findOrFail($id);
+            
+            // Store the assignment history before clearing assignment
+            $history = $item->assignment_history ?? [];
+            $history[] = [
+                'employee_id' => $item->assigned_to,
+                'employee_name' => $item->assigned_to_name,
+                'assigned_date' => $item->assigned_date,
+                'return_date' => $request->return_date,
+                'condition' => $request->condition,
+                'notes' => $request->notes,
+            ];
+            
+            // Update item to available status
+            $item->status = $request->condition === 'Damaged' ? 'Maintenance' : 'Available';
+            $item->assignment_history = $history;
+            $item->assigned_to = null;
+            $item->assigned_to_name = null;
+            $item->assigned_date = null;
+            $item->expected_return_date = null;
+            $item->assignment_notes = null;
+            $item->save();
+
+            return response()->json([
+                'message' => 'Inventory item returned successfully',
+                'data' => $item
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error returning inventory item: ' . $e->getMessage()
+            ], $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ? 404 : 500);
+        }
+    }
 }

@@ -9,7 +9,7 @@
       <div class="inventory-filters">
         <div class="filter-group">
           <label for="category-filter">Category:</label>
-          <select id="category-filter" v-model="categoryFilter">
+          <select id="category-filter" v-model="categoryFilter" @change="applyFilters">
             <option value="all">All Categories</option>
             <option value="tools">Tools</option>
             <option value="equipment">Heavy Equipment</option>
@@ -19,7 +19,7 @@
         </div>
         <div class="filter-group">
           <label for="status-filter">Status:</label>
-          <select id="status-filter" v-model="statusFilter">
+          <select id="status-filter" v-model="statusFilter" @change="applyFilters">
             <option value="all">All</option>
             <option value="available">Available</option>
             <option value="rented">Rented</option>
@@ -31,15 +31,31 @@
             type="text" 
             placeholder="Search inventory..." 
             v-model="searchQuery"
+            @input="handleSearchDebounce"
           >
         </div>
       </div>
 
-      <div class="inventory-grid">
-        <div class="inventory-card" v-for="(item, index) in filteredInventory" :key="index">
-          <div class="inventory-image" :class="item.status">
+      <!-- Loading spinner -->
+      <div class="loading-container" v-if="isLoading">
+        <div class="loading-spinner"></div>
+        <p>Loading inventory data...</p>
+      </div>
+
+      <!-- Error message -->
+      <div class="error-message" v-if="error">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{ error }}</p>
+        <button @click="fetchInventoryData" class="retry-button">
+          <i class="fas fa-sync"></i> Retry
+        </button>
+      </div>
+
+      <div v-if="!isLoading && !error" class="inventory-grid">
+        <div class="inventory-card" v-for="(item, index) in inventory" :key="item.id">
+          <div class="inventory-image" :class="item.status.toLowerCase()">
             <div class="status-badge">{{ item.status }}</div>
-            <img :src="getImagePlaceholder(item.category)" alt="Item image">
+            <img :src="getCategoryImage(item)" alt="Item image">
           </div>
           <div class="inventory-details">
             <h3 class="inventory-name">{{ item.name }}</h3>
@@ -49,21 +65,21 @@
               <span class="inventory-rate">${{ item.rate }}/day</span>
             </div>
             <p class="inventory-description">{{ item.description }}</p>
-            <div class="inventory-availability" v-if="item.status === 'rented'">
+            <div class="inventory-availability" v-if="item.status.toLowerCase() === 'rented'">
               <i class="fas fa-clock"></i>
-              <span>Available from: {{ item.availableFrom }}</span>
+              <span>Available from: {{ formatDate(item.expected_return_date || item.availableFrom) }}</span>
             </div>
             <div class="inventory-actions">
               <button 
                 class="action-button" 
-                :class="{ 'disabled': item.status !== 'available' }"
+                :class="{ 'disabled': item.status.toLowerCase() !== 'available' }"
                 @click="checkItem(index)"
               >
                 Check Item
               </button>
               <button 
                 class="action-button secondary" 
-                @click="viewDetails(index)"
+                @click="viewDetails(item)"
               >
                 View Details
               </button>
@@ -71,146 +87,196 @@
           </div>
         </div>
 
-        <div class="no-items" v-if="filteredInventory.length === 0">
+        <div class="no-items" v-if="inventory.length === 0">
           <i class="fas fa-box-open"></i>
           <p>No inventory items found with current filters</p>
         </div>
       </div>
+      
+      <!-- Pagination -->
+      <div class="pagination" v-if="!isLoading && !error && totalPages > 1">
+        <button 
+          :disabled="currentPage === 1" 
+          @click="changePage(currentPage - 1)" 
+          class="pagination-button"
+        >
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
+        <button 
+          :disabled="currentPage === totalPages" 
+          @click="changePage(currentPage + 1)" 
+          class="pagination-button"
+        >
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      
+      <!-- Item Detail Modal -->
+      <inventory-detail-modal 
+        :show="showModal" 
+        :item="selectedItem"
+        @close="closeModal"
+        @checkout="checkoutFromModal"
+      />
     </div>
   </employee-layout>
 </template>
 
 <script>
 import EmployeeLayout from '@/components/EmployeeLayout.vue'
+import InventoryDetailModal from '../../components/modals/InventoryDetailModal.vue'
+import inventoryService from '@/services/inventoryService'
 
 export default {
   name: 'EmployeeInventory',
   components: {
-    EmployeeLayout
+    EmployeeLayout,
+    InventoryDetailModal
   },
   data() {
     return {
       searchQuery: '',
       categoryFilter: 'all',
       statusFilter: 'all',
-      inventory: [
-        {
-          id: 'T-1001',
-          name: 'Power Drill',
-          category: 'tools',
-          description: 'Professional grade power drill with variable speed and multiple attachments.',
-          status: 'available',
-          rate: 15,
-          availableFrom: null
-        },
-        {
-          id: 'T-1002',
-          name: 'Circular Saw',
-          category: 'tools',
-          description: '7-1/4" circular saw with laser guide, 15-amp motor.',
-          status: 'rented',
-          rate: 20,
-          availableFrom: 'May 12, 2025'
-        },
-        {
-          id: 'E-2001',
-          name: 'Mini Excavator',
-          category: 'equipment',
-          description: 'Compact excavator perfect for small to medium digging projects.',
-          status: 'available',
-          rate: 150,
-          availableFrom: null
-        },
-        {
-          id: 'E-2002',
-          name: 'Portable Generator',
-          category: 'equipment',
-          description: '5000W portable generator with multiple outlets and low noise operation.',
-          status: 'maintenance',
-          rate: 75,
-          availableFrom: 'May 15, 2025'
-        },
-        {
-          id: 'EL-3001',
-          name: 'Professional DSLR Camera',
-          category: 'electronics',
-          description: 'High-end DSLR camera with 24.2MP sensor and 4K video capabilities.',
-          status: 'available',
-          rate: 45,
-          availableFrom: null
-        },
-        {
-          id: 'EL-3002',
-          name: 'PA System',
-          category: 'electronics',
-          description: 'Complete PA system with speakers, mixer, and microphones for events.',
-          status: 'rented',
-          rate: 85,
-          availableFrom: 'May 8, 2025'
-        },
-        {
-          id: 'F-4001',
-          name: 'Folding Tables (set of 5)',
-          category: 'furniture',
-          description: '6ft rectangular folding tables, perfect for events.',
-          status: 'available',
-          rate: 50,
-          availableFrom: null
-        },
-        {
-          id: 'F-4002',
-          name: 'Stacking Chairs (set of 20)',
-          category: 'furniture',
-          description: 'Comfortable padded stacking chairs for events and gatherings.',
-          status: 'rented',
-          rate: 40,
-          availableFrom: 'May 9, 2025'
-        }
-      ]
+      inventory: [],
+      isLoading: false,
+      error: null,
+      searchTimeout: null,
+      currentPage: 1,
+      totalPages: 1,
+      itemsPerPage: 8,
+      showModal: false,
+      selectedItem: {}
     }
   },
-  computed: {
-    filteredInventory() {
-      return this.inventory.filter(item => {
-        // Category filter
-        if (this.categoryFilter !== 'all' && item.category !== this.categoryFilter) {
-          return false;
-        }
-        
-        // Status filter
-        if (this.statusFilter !== 'all' && item.status !== this.statusFilter) {
-          return false;
-        }
-        
-        // Search query
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase();
-          return item.name.toLowerCase().includes(query) || 
-                 item.description.toLowerCase().includes(query) ||
-                 item.id.toLowerCase().includes(query);
-        }
-        
-        return true;
-      });
-    }
+  created() {
+    this.fetchInventoryData();
   },
   methods: {
-    getImagePlaceholder(category) {
-      // In a real app, you would use actual images
-      // This is just a placeholder function
-      return 'https://via.placeholder.com/300x200?text='+category;
+    async fetchInventoryData() {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        // Prepare query parameters
+        const params = {
+          page: this.currentPage,
+          per_page: this.itemsPerPage
+        };
+        
+        // Add filters if selected
+        if (this.categoryFilter !== 'all') {
+          params.category = this.categoryFilter;
+        }
+        
+        if (this.statusFilter !== 'all') {
+          params.status = this.statusFilter;
+        }
+        
+        if (this.searchQuery) {
+          params.search = this.searchQuery;
+        }
+        
+        // Fetch data from API
+        const response = await inventoryService.getInventoryItems(params);
+        
+        // Update component data with API response
+        this.inventory = response.data.data;
+        
+        // Update pagination data
+        if (response.data.meta) {
+          this.totalPages = response.data.meta.last_page;
+          this.currentPage = response.data.meta.current_page;
+        }
+      } catch (err) {
+        console.error('Failed to fetch inventory data:', err);
+        this.error = 'Unable to load inventory data. Please try again later.';
+      } finally {
+        this.isLoading = false;
+      }
     },
+    
+    handleSearchDebounce() {
+      // Clear any existing timeout
+      if (this.searchTimeout) {
+        clearTimeout(this.searchTimeout);
+      }
+      
+      // Set a new timeout to delay the API call
+      this.searchTimeout = setTimeout(() => {
+        this.currentPage = 1; // Reset to first page on new search
+        this.fetchInventoryData();
+      }, 500);
+    },
+    
+    applyFilters() {
+      this.currentPage = 1; // Reset to first page when filters change
+      this.fetchInventoryData();
+    },
+    
+    changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+        this.fetchInventoryData();
+      }
+    },
+    
+    formatDate(dateString) {
+      if (!dateString) return 'Unknown';
+      
+      try {
+        const date = new Date(dateString);
+        
+        if (isNaN(date.getTime())) {
+          return dateString; // Return original string if not a valid date
+        }
+        
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric'
+        });
+      } catch (error) {
+        return dateString;
+      }
+    },
+    
+    getCategoryImage(item) {
+      const category = item.category?.toLowerCase() || 'generic';
+      const itemName = item.name ? encodeURIComponent(item.name) : '';
+      
+      // Define image URLs for specific categories
+      const imageMap = {
+        'tools': `https://source.unsplash.com/300x200/?tool,${itemName}`,
+        'equipment': `https://source.unsplash.com/300x200/?equipment,${itemName}`,
+        'electronics': `https://source.unsplash.com/300x200/?electronics,${itemName}`,
+        'furniture': `https://source.unsplash.com/300x200/?furniture,${itemName}`
+      };
+      
+      return imageMap[category] || `https://source.unsplash.com/300x200/?${category},${itemName}`;
+    },
+    
     checkItem(index) {
       const item = this.inventory[index];
-      if (item.status === 'available') {
+      if (item.status.toLowerCase() === 'available') {
         // In a real app, this would open a check-out form or dialog
         alert(`Item ${item.name} (${item.id}) is being checked for rental.`);
       }
     },
-    viewDetails(index) {
-      // In a real app, this would navigate to a detailed view or open a modal
-      const item = this.inventory[index];
-      alert(`Viewing details for ${item.name} (${item.id})`);
+    
+    viewDetails(item) {
+      this.selectedItem = item;
+      this.showModal = true;
+    },
+    
+    closeModal() {
+      this.showModal = false;
+    },
+    
+    checkoutFromModal(item) {
+      alert(`Item ${item.name} (${item.id}) is being checked for rental.`);
+      this.closeModal();
     }
   }
 }
@@ -277,6 +343,60 @@ export default {
 
 .search-group input {
   min-width: 200px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 0;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(37, 99, 235, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #2563eb;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.error-message i {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.retry-button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  background-color: #991b1b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.retry-button:hover {
+  background-color: #7f1d1d;
 }
 
 .inventory-grid {
@@ -459,6 +579,42 @@ export default {
 
 .no-items p {
   font-size: 1.1rem;
+}
+
+.pagination {
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.pagination-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
 @media (max-width: 640px) {

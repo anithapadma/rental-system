@@ -53,6 +53,11 @@ Route::put('/inventory/{id}', [InventoryController::class, 'update']);
 Route::delete('/inventory/{id}', [InventoryController::class, 'destroy']);
 Route::patch('/inventory/{id}/status', [InventoryController::class, 'updateStatus']);
 
+// Employee Inventory routes
+Route::get('/employee-inventory', [InventoryController::class, 'employeeInventory']);
+Route::post('/inventory/{id}/assign', [InventoryController::class, 'assignToEmployee']);
+Route::post('/inventory/{id}/return', [InventoryController::class, 'returnFromEmployee']);
+
 // Agreement routes
 Route::get('/agreements', [AgreementController::class, 'index']);
 Route::post('/agreements', [AgreementController::class, 'store']);
