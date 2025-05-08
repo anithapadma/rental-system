@@ -39,7 +39,7 @@ export default {
   },
   watch: {
     chartData: {
-      handler(newVal) {
+      handler() {
         this.updateChart();
       },
       deep: true
