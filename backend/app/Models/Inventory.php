@@ -46,6 +46,7 @@ class Inventory extends Model
         'id',
         'name',
         'category',
+        'category_id', // Added for relationship
         'status',
         'rate',
         'description',
@@ -67,4 +68,20 @@ class Inventory extends Model
         'rate' => 'float',
         'acquisition_date' => 'date'
     ];
+    
+    /**
+     * Get the category that owns the inventory item.
+     */
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
+    
+    /**
+     * Get the agreement items for this inventory item.
+     */
+    public function agreementItems()
+    {
+        return $this->hasMany(AgreementItem::class);
+    }
 }

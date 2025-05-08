@@ -36,9 +36,7 @@ export default {
     };
   },
   mounted() {
-    this.$nextTick(() => {
-      this.renderChart();
-    });
+    this.renderChart();
   },
   watch: {
     chartData: {
@@ -67,6 +65,14 @@ export default {
       const defaultOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: {
+            top: 10,
+            right: 15, 
+            bottom: 10,
+            left: 15
+          }
+        },
         plugins: {
           legend: {
             position: 'top',
@@ -93,7 +99,8 @@ export default {
               family: "'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif"
             },
             cornerRadius: 4,
-            padding: 8
+            padding: 8,
+            displayColors: true
           }
         },
         scales: {
@@ -138,17 +145,73 @@ export default {
       }
       
       try {
-        // Create new chart
+        // Create new chart with merged options
+        const mergedOptions = this.mergeDeep(defaultOptions, this.options || {});
+        
         this.chart = new Chart(ctx, {
           type: 'line',
           data: validatedData,
-          options: defaultOptions
+          options: mergedOptions
         });
       } catch (error) {
         console.error('Chart creation error:', error);
+        // Try again with minimum options
+        try {
+          this.chart = new Chart(ctx, {
+            type: 'line',
+            data: validatedData,
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+        } catch (fallbackError) {
+          console.error('Fallback chart creation failed:', fallbackError);
+        }
       }
     },
+
+    mergeDeep(target, source) {
+      // For merging options objects deeply
+      const isObject = obj => obj && typeof obj === 'object' && !Array.isArray(obj);
+      
+      if (!isObject(target) || !isObject(source)) {
+        return source;
+      }
+      
+      const output = {...target};
+      
+      Object.keys(source).forEach(key => {
+        if (isObject(source[key])) {
+          if (!(key in target)) {
+            output[key] = source[key];
+          } else {
+            output[key] = this.mergeDeep(target[key], source[key]);
+          }
+        } else {
+          output[key] = source[key];
+        }
+      });
+      
+      return output;
+    },
+
     validateChartData(data) {
+      // Handle null or undefined data
+      if (!data) {
+        return {
+          labels: ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'Item 5'],
+          datasets: [{
+            label: 'Data',
+            data: [0, 0, 0, 0, 0],
+            borderColor: '#4299e1',
+            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+            borderWidth: 2,
+            fill: true
+          }]
+        };
+      }
+
       // Create a deep copy to avoid mutating props
       const result = JSON.parse(JSON.stringify(data));
       
@@ -190,6 +253,7 @@ export default {
       
       return result;
     },
+    
     updateChart() {
       if (!this.chart) {
         this.renderChart();
@@ -199,9 +263,10 @@ export default {
       try {
         const validatedData = this.validateChartData(this.chartData);
         this.chart.data = validatedData;
-        this.chart.update('none'); // Use 'none' to prevent animation during update
+        this.chart.update();
       } catch (error) {
         console.error('Chart update error:', error);
+        this.renderChart(); // Try re-rendering the chart on update error
       }
     }
   },

@@ -1,5 +1,5 @@
 <template>
-  <div class="reports-page">
+  <div class="reports-page" style="margin-top: -4%;">
     <div class="dashboard-header">
       <div class="header-content">
         <h1 class="dashboard-title">Reports</h1>

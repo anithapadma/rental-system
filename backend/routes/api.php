@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\EmployeeTaskController;
 use App\Http\Controllers\Api\EmployeeDashboardController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\AgreementController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Models\Category;
 
 /*
@@ -119,6 +120,15 @@ Route::get('/employee/dashboard/performance', [EmployeeDashboardController::clas
 Route::get('/employee/dashboard/task-distribution', [EmployeeDashboardController::class, 'getTaskDistribution']);
 Route::get('/employee/dashboard/rental-stats', [EmployeeDashboardController::class, 'getRentalStats']);
 Route::get('/employee/dashboard/team', [EmployeeDashboardController::class, 'getTeam']);
+
+// Admin Dashboard routes
+Route::get('/admin/dashboard/all', [AdminDashboardController::class, 'getAllData']);
+Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'getStats']);
+Route::get('/admin/dashboard/recent-activities', [AdminDashboardController::class, 'getRecentActivities']);
+Route::get('/admin/dashboard/deadlines', [AdminDashboardController::class, 'getUpcomingDeadlines']);
+Route::get('/admin/dashboard/rental-trends', [AdminDashboardController::class, 'getRentalTrends']);
+Route::get('/admin/dashboard/item-status', [AdminDashboardController::class, 'getInventoryStatus']);
+Route::get('/admin/dashboard/revenue', [AdminDashboardController::class, 'getCategoryPerformance']);
 
 // Debug routes
 Route::get('/debug/categories', function () {

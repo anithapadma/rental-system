@@ -34,9 +34,10 @@
           </div>
           <div class="stat-content">
             <h3 class="stat-title">Active Rentals</h3>
-            <div class="stat-value">24</div>
-            <div class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i> 8% from last week
+            <div class="stat-value">{{ stats.activeRentals.value }}</div>
+            <div :class="['stat-trend', stats.activeRentals.trend > 0 ? 'positive' : 'negative']">
+              <i :class="['fas', stats.activeRentals.trend > 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i> 
+              {{ Math.abs(stats.activeRentals.trend) }}% from last week
             </div>
           </div>
         </div>
@@ -47,9 +48,10 @@
           </div>
           <div class="stat-content">
             <h3 class="stat-title">Total Inventory</h3>
-            <div class="stat-value">156</div>
-            <div class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i> 3% from last month
+            <div class="stat-value">{{ stats.totalInventory.value }}</div>
+            <div :class="['stat-trend', stats.totalInventory.trend > 0 ? 'positive' : 'negative']">
+              <i :class="['fas', stats.totalInventory.trend > 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i>
+              {{ Math.abs(stats.totalInventory.trend) }}% from last month
             </div>
           </div>
         </div>
@@ -60,9 +62,10 @@
           </div>
           <div class="stat-content">
             <h3 class="stat-title">Pending Returns</h3>
-            <div class="stat-value">8</div>
-            <div class="stat-trend negative">
-              <i class="fas fa-arrow-down"></i> 5% from last week
+            <div class="stat-value">{{ stats.pendingReturns.value }}</div>
+            <div :class="['stat-trend', stats.pendingReturns.trend > 0 ? 'positive' : 'negative']">
+              <i :class="['fas', stats.pendingReturns.trend > 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i>
+              {{ Math.abs(stats.pendingReturns.trend) }}% from last week
             </div>
           </div>
         </div>
@@ -73,9 +76,10 @@
           </div>
           <div class="stat-content">
             <h3 class="stat-title">Monthly Revenue</h3>
-            <div class="stat-value">$4,250</div>
-            <div class="stat-trend positive">
-              <i class="fas fa-arrow-up"></i> 12% from last month
+            <div class="stat-value">${{ stats.monthlyRevenue.value.toLocaleString() }}</div>
+            <div :class="['stat-trend', stats.monthlyRevenue.trend > 0 ? 'positive' : 'negative']">
+              <i :class="['fas', stats.monthlyRevenue.trend > 0 ? 'fa-arrow-up' : 'fa-arrow-down']"></i>
+              {{ Math.abs(stats.monthlyRevenue.trend) }}% from last month
             </div>
           </div>
         </div>
@@ -88,7 +92,7 @@
           <div class="chart-header">
             <h3>Rental Trends</h3>
             <div class="chart-actions">
-              <select v-model="rentalTrendPeriod" class="period-selector">
+              <select v-model="rentalTrendPeriod" class="period-selector" @change="loadRentalTrends">
                 <option value="week">Last Week</option>
                 <option value="month">Last Month</option>
                 <option value="quarter">Last Quarter</option>
@@ -100,25 +104,32 @@
           </div>
         </div>
         
-        <!-- Inventory Status Chart -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>Inventory Status</h3>
-          </div>
-          <div class="chart-body">
-            <DoughnutChart :chartData="inventoryStatusData" />
-          </div>
-        </div>
+       <!-- Wrapper to align charts in one row -->
+<div style="display: flex; justify-content: space-between; gap: 20px;">
+
+<!-- Inventory Status Chart -->
+<div class="chart-card" style="flex: 1; max-width: 48%;">
+  <div class="chart-header">
+    <h3>Inventory Status</h3>
+  </div>
+  <div class="chart-body">
+    <DoughnutChart :chartData="inventoryStatusData" />
+  </div>
+</div>
+
+<!-- Category Performance Chart -->
+<div class="chart-card" style="flex: 1; max-width: 48%;">
+  <div class="chart-header">
+    <h3>Category Performance</h3>
+  </div>
+  <div class="chart-body">
+    <BarChart :chartData="categoryPerformanceData" />
+  </div>
+</div>
+
+</div>
+
         
-        <!-- Category Performance Chart -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>Category Performance</h3>
-          </div>
-          <div class="chart-body">
-            <BarChart :chartData="categoryPerformanceData" />
-          </div>
-        </div>
       </div>
       
       <!-- Recent Activity & Deadlines Section -->
@@ -195,6 +206,7 @@ import LineChart from '../components/charts/LineChart.vue';
 import BarChart from '../components/charts/BarChart.vue';
 import DoughnutChart from '../components/charts/DoughnutChart.vue';
 import pageFunctionality from '../mixins/pageFunctionality';
+import adminDashboardService from '../services/adminDashboardService';
 
 export default {
   name: 'Dashboard',
@@ -209,25 +221,20 @@ export default {
   data() {
     return {
       rentalTrendPeriod: 'month',
-      recentActivities: [
-        { date: '2025-05-01', customer: 'John Smith', item: 'Power Generator', status: 'Rented' },
-        { date: '2025-04-30', customer: 'Sarah Johnson', item: 'Floor Sander', status: 'Returned' },
-        { date: '2025-04-29', customer: 'Mike Williams', item: 'Concrete Mixer', status: 'Overdue' },
-        { date: '2025-04-28', customer: 'Emily Brown', item: 'Pressure Washer', status: 'Rented' },
-        { date: '2025-04-27', customer: 'David Miller', item: 'Scissor Lift', status: 'Maintenance' }
-      ],
-      upcomingDeadlines: [
-        { customer: 'John Smith', item: 'Power Generator', duration: '3 days', dueDate: '2025-05-04' },
-        { customer: 'Emily Brown', item: 'Pressure Washer', duration: '1 week', dueDate: '2025-05-05' },
-        { customer: 'Robert Jones', item: 'Jackhammer', duration: '2 days', dueDate: '2025-05-03' },
-        { customer: 'Lisa Davis', item: 'Paint Sprayer', duration: '4 days', dueDate: '2025-05-05' }
-      ],
+      stats: {
+        activeRentals: { value: 0, trend: 0 },
+        totalInventory: { value: 0, trend: 0 },
+        pendingReturns: { value: 0, trend: 0 },
+        monthlyRevenue: { value: 0, trend: 0 }
+      },
+      recentActivities: [],
+      upcomingDeadlines: [],
       rentalTrendsData: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        labels: [],
         datasets: [
           {
             label: 'New Rentals',
-            data: [18, 25, 30, 24],
+            data: [],
             borderColor: '#4299e1',
             backgroundColor: 'rgba(66, 153, 225, 0.1)',
             tension: 0.4,
@@ -239,7 +246,7 @@ export default {
           },
           {
             label: 'Returns',
-            data: [12, 19, 27, 20],
+            data: [],
             borderColor: '#48bb78',
             backgroundColor: 'rgba(72, 187, 120, 0.1)',
             tension: 0.4,
@@ -254,7 +261,7 @@ export default {
       inventoryStatusData: {
         labels: ['Available', 'Rented', 'Maintenance', 'Reserved'],
         datasets: [{
-          data: [65, 24, 8, 13],
+          data: [10, 5, 3, 2], // Adding default data values instead of empty array
           backgroundColor: [
             'rgba(66, 153, 225, 0.8)',
             'rgba(72, 187, 120, 0.8)',
@@ -270,10 +277,10 @@ export default {
         }]
       },
       categoryPerformanceData: {
-        labels: ['Power Tools', 'Landscaping', 'Construction', 'Cleaning', 'Moving'],
+        labels: [],
         datasets: [{
           label: 'Rental Frequency',
-          data: [42, 35, 28, 22, 15],
+          data: [],
           backgroundColor: 'rgba(66, 153, 225, 0.8)',
           borderColor: 'rgba(66, 153, 225, 1)',
           borderWidth: 1,
@@ -289,11 +296,6 @@ export default {
   },
   mounted() {
     this.fetchPageData();
-  },
-  watch: {
-    rentalTrendPeriod() {
-      this.updateRentalTrendsChart();
-    }
   },
   methods: {
     getStatusClass(status) {
@@ -327,46 +329,132 @@ export default {
       if (diffDays <= 2) return 'warning';
       return 'normal';
     },
-    updateRentalTrendsChart() {
-      // In a real app, this would fetch data based on the selected period
-      // For now, we'll just simulate different data
-      if (this.rentalTrendPeriod === 'week') {
-        this.rentalTrendsData = {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          datasets: [
-            {
-              label: 'New Rentals',
-              data: [5, 7, 4, 6, 8, 3, 5],
-              borderColor: '#4299e1',
-              backgroundColor: 'rgba(66, 153, 225, 0.1)',
-              tension: 0.4,
-              pointBackgroundColor: '#4299e1',
-              pointBorderColor: '#fff',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              fill: true
-            },
-            {
-              label: 'Returns',
-              data: [3, 4, 6, 4, 7, 2, 4],
-              borderColor: '#48bb78',
-              backgroundColor: 'rgba(72, 187, 120, 0.1)',
-              tension: 0.4,
-              pointBackgroundColor: '#48bb78',
-              pointBorderColor: '#fff',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              fill: true
-            }
-          ]
+    async refreshData() {
+      this.fetchPageData();
+    },
+    async fetchPageData() {
+      this.startLoading("Loading dashboard data...");
+      this.error = null;
+      
+      try {
+        // Option 1: Fetch all data at once
+        const response = await adminDashboardService.getAllDashboardData();
+        const data = response.data.data || response.data;
+        
+        // Set all dashboard data
+        this.setDashboardData(data);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        this.error = {
+          message: 'Failed to load dashboard data. Please try again.'
         };
-      } else if (this.rentalTrendPeriod === 'month') {
+        
+        // Set default data for charts so they still render
+        this.setRentalTrendsData(null);
+        this.setInventoryStatusData(null);
+        this.setCategoryPerformanceData(null);
+        
+        // Show error notification if available
+        if (this.$notifications) {
+          this.$notifications.addNotification({
+            type: 'error',
+            title: 'Dashboard Error',
+            message: 'Failed to load dashboard data'
+          });
+        }
+      } finally {
+        this.stopLoading();
+      }
+    },
+    setDashboardData(data) {
+      // Set stats
+      if (data.stats) {
+        this.stats = data.stats;
+      }
+      
+      // Set recent activities
+      if (data.recentActivities) {
+        this.recentActivities = data.recentActivities;
+      }
+      
+      // Set upcoming deadlines
+      if (data.upcomingDeadlines) {
+        this.upcomingDeadlines = data.upcomingDeadlines;
+      }
+      
+      // Set chart data
+      if (data.rentalTrends) {
+        this.setRentalTrendsData(data.rentalTrends);
+      }
+      
+      if (data.inventoryStatus) {
+        this.setInventoryStatusData(data.inventoryStatus);
+      }
+      
+      if (data.categoryPerformance) {
+        this.setCategoryPerformanceData(data.categoryPerformance);
+      }
+    },
+    async loadStatsSummary() {
+      try {
+        const response = await adminDashboardService.getStatsSummary();
+        this.stats = response.data.data || response.data;
+      } catch (error) {
+        console.error('Failed to load stats summary:', error);
+      }
+    },
+    async loadRentalTrends() {
+      try {
+        const response = await adminDashboardService.getRentalTrends(this.rentalTrendPeriod);
+        const data = response.data.data || response.data;
+        this.setRentalTrendsData(data);
+      } catch (error) {
+        console.error('Failed to load rental trends:', error);
+      }
+    },
+    async loadItemStatusDistribution() {
+      try {
+        const response = await adminDashboardService.getItemStatusDistribution();
+        const data = response.data.data || response.data;
+        this.setInventoryStatusData(data);
+      } catch (error) {
+        console.error('Failed to load inventory status distribution:', error);
+      }
+    },
+    async loadCategoryPerformance() {
+      try {
+        const response = await adminDashboardService.getRevenueData();
+        const data = response.data.data || response.data;
+        this.setCategoryPerformanceData(data);
+      } catch (error) {
+        console.error('Failed to load category performance data:', error);
+      }
+    },
+    async loadRecentActivities() {
+      try {
+        const response = await adminDashboardService.getRecentActivities();
+        this.recentActivities = response.data.data || response.data;
+      } catch (error) {
+        console.error('Failed to load recent activities:', error);
+      }
+    },
+    async loadUpcomingDeadlines() {
+      try {
+        const response = await adminDashboardService.getUpcomingDeadlines();
+        this.upcomingDeadlines = response.data.data || response.data;
+      } catch (error) {
+        console.error('Failed to load upcoming deadlines:', error);
+      }
+    },
+    setRentalTrendsData(data) {
+      if (!data) {
+        // Provide fallback data if response is undefined
         this.rentalTrendsData = {
           labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
           datasets: [
             {
               label: 'New Rentals',
-              data: [18, 25, 30, 24],
+              data: [5, 7, 4, 8],
               borderColor: '#4299e1',
               backgroundColor: 'rgba(66, 153, 225, 0.1)',
               tension: 0.4,
@@ -378,7 +466,7 @@ export default {
             },
             {
               label: 'Returns',
-              data: [12, 19, 27, 20],
+              data: [3, 6, 5, 7],
               borderColor: '#48bb78',
               backgroundColor: 'rgba(72, 187, 120, 0.1)',
               tension: 0.4,
@@ -390,52 +478,88 @@ export default {
             }
           ]
         };
-      } else if (this.rentalTrendPeriod === 'quarter') {
-        this.rentalTrendsData = {
-          labels: ['January', 'February', 'March', 'April'],
-          datasets: [
-            {
-              label: 'New Rentals',
-              data: [65, 72, 95, 97],
-              borderColor: '#4299e1',
-              backgroundColor: 'rgba(66, 153, 225, 0.1)',
-              tension: 0.4,
-              pointBackgroundColor: '#4299e1',
-              pointBorderColor: '#fff',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              fill: true
-            },
-            {
-              label: 'Returns',
-              data: [58, 69, 86, 78],
-              borderColor: '#48bb78',
-              backgroundColor: 'rgba(72, 187, 120, 0.1)',
-              tension: 0.4,
-              pointBackgroundColor: '#48bb78',
-              pointBorderColor: '#fff',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              fill: true
-            }
-          ]
-        };
+        return;
+      }
+      
+      if (data.labels && Array.isArray(data.labels)) {
+        this.rentalTrendsData.labels = data.labels;
+      } else {
+        this.rentalTrendsData.labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      }
+      
+      if (data.newRentals && Array.isArray(data.newRentals)) {
+        this.rentalTrendsData.datasets[0].data = data.newRentals;
+      } else {
+        this.rentalTrendsData.datasets[0].data = [5, 7, 4, 8];
+      }
+      
+      if (data.returns && Array.isArray(data.returns)) {
+        this.rentalTrendsData.datasets[1].data = data.returns;
+      } else {
+        this.rentalTrendsData.datasets[1].data = [3, 6, 5, 7];
       }
     },
-    async fetchPageData() {
-      // In a real application, this would call an API
-      this.startLoading("Loading dashboard data...");
+    setInventoryStatusData(data) {
+      if (!data) {
+        // Provide fallback data if response is undefined
+        this.inventoryStatusData = {
+          labels: ['Available', 'Rented', 'Maintenance', 'Reserved'],
+          datasets: [{
+            data: [10, 5, 3, 2],
+            backgroundColor: [
+              'rgba(66, 153, 225, 0.8)',
+              'rgba(72, 187, 120, 0.8)',
+              'rgba(237, 137, 54, 0.8)',
+              'rgba(159, 122, 234, 0.8)'
+            ],
+            hoverBackgroundColor: [
+              'rgba(66, 153, 225, 1)',
+              'rgba(72, 187, 120, 1)',
+              'rgba(237, 137, 54, 1)',
+              'rgba(159, 122, 234, 1)'
+            ]
+          }]
+        };
+        return;
+      }
       
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Here you would typically fetch data from an API
-        
-        // For demonstration, we'll just update the timestamp
-        this.lastUpdated = new Date();
-      } catch (error) {
-        this.handleError(error);
-      } finally {
-        this.stopLoading();
+      if (data.labels && Array.isArray(data.labels)) {
+        this.inventoryStatusData.labels = data.labels;
+      }
+      
+      if (data.values && Array.isArray(data.values)) {
+        this.inventoryStatusData.datasets[0].data = data.values;
+      } else {
+        this.inventoryStatusData.datasets[0].data = [10, 5, 3, 2];
+      }
+    },
+    setCategoryPerformanceData(data) {
+      if (!data) {
+        // Provide fallback data if response is undefined
+        this.categoryPerformanceData = {
+          labels: ['Category 1', 'Category 2', 'Category 3', 'Category 4', 'Category 5'],
+          datasets: [{
+            label: 'Rental Frequency',
+            data: [10, 8, 6, 4, 2],
+            backgroundColor: 'rgba(66, 153, 225, 0.8)',
+            borderColor: 'rgba(66, 153, 225, 1)',
+            borderWidth: 1,
+            borderRadius: 5
+          }]
+        };
+        return;
+      }
+      
+      if (data.labels && Array.isArray(data.labels)) {
+        this.categoryPerformanceData.labels = data.labels;
+      } else {
+        this.categoryPerformanceData.labels = ['Category 1', 'Category 2', 'Category 3', 'Category 4', 'Category 5'];
+      }
+      
+      if (data.values && Array.isArray(data.values)) {
+        this.categoryPerformanceData.datasets[0].data = data.values;
+      } else {
+        this.categoryPerformanceData.datasets[0].data = [10, 8, 6, 4, 2];
       }
     }
   }
@@ -443,6 +567,7 @@ export default {
 </script>
 
 <style scoped>
+/* Existing styles unchanged */
 .dashboard-container {
   display: flex;
   background-color: #f7fafc;
@@ -670,6 +795,7 @@ body.sidebar-collapsed .dashboard-content {
   align-items: center;
   justify-content: center;
   min-height: 250px;
+  height: 300px;
 }
 
 /* Tables Grid */
