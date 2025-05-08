@@ -1,131 +1,133 @@
 <template>
   <EmployeeLayout pageTitle="Dashboard">
     <div class="dashboard-content">
-      <!-- First row - existing cards -->
-      <div class="dashboard-card">
-        <div class="card-header">
-          <i class="fas fa-clipboard-list"></i>
-          <h3>My Tasks</h3>
-        </div>
-        <div class="card-body">
-          <div class="task-item">
-            <span class="task-name">Process rental requests</span>
-            <span class="task-status pending">Pending</span>
-          </div>
-          <div class="task-item">
-            <span class="task-name">Update inventory items</span>
-            <span class="task-status completed">Completed</span>
-          </div>
-          <div class="task-item">
-            <span class="task-name">Contact customer #12458</span>
-            <span class="task-status pending">Pending</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="dashboard-card">
-        <div class="card-header">
-          <i class="fas fa-calendar"></i>
-          <h3>Today's Schedule</h3>
-        </div>
-        <div class="card-body">
-          <div class="schedule-item">
-            <span class="schedule-time">9:00 AM</span>
-            <span class="schedule-title">Morning check-in</span>
-          </div>
-          <div class="schedule-item">
-            <span class="schedule-time">11:30 AM</span>
-            <span class="schedule-title">Inventory check</span>
-          </div>
-          <div class="schedule-item">
-            <span class="schedule-time">2:00 PM</span>
-            <span class="schedule-title">Customer follow-ups</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="dashboard-card">
-        <div class="card-header">
-          <i class="fas fa-dolly"></i>
-          <h3>Recent Rentals</h3>
-        </div>
-        <div class="card-body">
-          <div class="rental-item">
-            <span class="rental-id">#45782</span>
-            <span class="rental-customer">John Smith</span>
-            <span class="rental-date">May 4, 2025</span>
-          </div>
-          <div class="rental-item">
-            <span class="rental-id">#45780</span>
-            <span class="rental-customer">Sarah Johnson</span>
-            <span class="rental-date">May 3, 2025</span>
-          </div>
-          <div class="rental-item">
-            <span class="rental-id">#45779</span>
-            <span class="rental-customer">Mike Davis</span>
-            <span class="rental-date">May 3, 2025</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Second row - Charts -->
-      <div class="dashboard-card chart-card">
-        <div class="card-header">
-          <i class="fas fa-chart-line"></i>
-          <h3>Performance Trends</h3>
-        </div>
-        <div class="card-body chart-container">
-          <LineChart :chartData="performanceChartData" :options="chartOptions" />
-        </div>
-      </div>
-
-      <div class="dashboard-card chart-card">
-        <div class="card-header">
-          <i class="fas fa-chart-pie"></i>
-          <h3>Task Distribution</h3>
-        </div>
-        <div class="card-body chart-container">
-          <DoughnutChart :chartData="taskDistributionData" :options="chartOptions" />
-        </div>
-      </div>
-
-      <div class="dashboard-card chart-card">
-        <div class="card-header">
-          <i class="fas fa-chart-bar"></i>
-          <h3>Weekly Rental Statistics</h3>
-        </div>
-        <div class="card-body chart-container">
-          <BarChart :chartData="rentalStatsData" :options="chartOptions" />
-        </div>
+      <!-- Loading state -->
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Loading dashboard data...</p>
       </div>
       
-      <!-- Employee List with Images -->
-      <div class="dashboard-card employee-list-card">
-        <div class="card-header">
-          <i class="fas fa-users"></i>
-          <h3>Team Members</h3>
-        </div>
-        <div class="card-body">
-          <div class="team-grid">
-            <div 
-              v-for="employee in employees" 
-              :key="employee.id" 
-              class="employee-card"
-              @click="openEmployeeModal(employee)"
-            >
-              <div class="employee-image">
-                <img v-if="employee.image" :src="employee.image" :alt="employee.name">
-                <div v-else class="employee-initials">{{ getInitials(employee.name) }}</div>
+      <!-- Error state -->
+      <div v-else-if="error" class="error-message">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h3>Unable to load dashboard data</h3>
+        <p>{{ error }}</p>
+        <button @click="loadDashboardData" class="retry-button">
+          <i class="fas fa-sync"></i> Retry
+        </button>
+      </div>
+
+      <template v-else>
+        <!-- First row - existing cards -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <i class="fas fa-clipboard-list"></i>
+            <h3>My Tasks</h3>
+          </div>
+          <div class="card-body">
+            <div v-if="dashboardTasks.length === 0" class="empty-state">No tasks found</div>
+            <template v-else>
+              <div class="task-item" v-for="(task, index) in dashboardTasks" :key="index">
+                <span class="task-name">{{ task.name }}</span>
+                <span class="task-status" :class="task.status">{{ task.status }}</span>
               </div>
-              <div class="employee-info">
-                <h4>{{ employee.name }}</h4>
-                <p>{{ employee.role }}</p>
-                <span class="department-tag">{{ employee.department }}</span>
+            </template>
+          </div>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="card-header">
+            <i class="fas fa-calendar"></i>
+            <h3>Today's Schedule</h3>
+          </div>
+          <div class="card-body">
+            <div v-if="dashboardSchedule.length === 0" class="empty-state">No scheduled events today</div>
+            <template v-else>
+              <div class="schedule-item" v-for="(item, index) in dashboardSchedule" :key="index">
+                <span class="schedule-time">{{ item.time }}</span>
+                <span class="schedule-title">{{ item.title }}</span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="dashboard-card">
+          <div class="card-header">
+            <i class="fas fa-dolly"></i>
+            <h3>Recent Rentals</h3>
+          </div>
+          <div class="card-body">
+            <div v-if="dashboardRentals.length === 0" class="empty-state">No recent rentals</div>
+            <template v-else>
+              <div class="rental-item" v-for="(rental, index) in dashboardRentals" :key="index">
+                <span class="rental-id">{{ rental.id }}</span>
+                <span class="rental-customer">{{ rental.customer }}</span>
+                <span class="rental-date">{{ rental.date }}</span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Second row - Charts -->
+        <div class="dashboard-card chart-card">
+          <div class="card-header">
+            <i class="fas fa-chart-line"></i>
+            <h3>Performance Trends</h3>
+          </div>
+          <div class="card-body chart-container">
+            <LineChart :chartData="performanceChartData" :options="chartOptions" />
+          </div>
+        </div>
+
+        <div class="dashboard-card chart-card">
+          <div class="card-header">
+            <i class="fas fa-chart-pie"></i>
+            <h3>Task Distribution</h3>
+          </div>
+          <div class="card-body chart-container">
+            <DoughnutChart :chartData="taskDistributionData" :options="chartOptions" />
+          </div>
+        </div>
+
+        <div class="dashboard-card chart-card">
+          <div class="card-header">
+            <i class="fas fa-chart-bar"></i>
+            <h3>Weekly Rental Statistics</h3>
+          </div>
+          <div class="card-body chart-container">
+            <BarChart :chartData="rentalStatsData" :options="chartOptions" />
+          </div>
+        </div>
+        
+        <!-- Employee List with Images -->
+        <div class="dashboard-card employee-list-card">
+          <div class="card-header">
+            <i class="fas fa-users"></i>
+            <h3>Team Members</h3>
+          </div>
+          <div class="card-body">
+            <div v-if="employees.length === 0" class="empty-state">No team members found</div>
+            <div v-else class="team-grid">
+              <div 
+                v-for="employee in employees" 
+                :key="employee.id" 
+                class="employee-card"
+                @click="openEmployeeModal(employee)"
+              >
+                <div class="employee-image">
+                  <img v-if="employee.image" :src="employee.image" :alt="employee.name">
+                  <div v-else class="employee-initials">{{ getInitials(employee.name) }}</div>
+                </div>
+                <div class="employee-info">
+                  <h4>{{ employee.name }}</h4>
+                  <p>{{ employee.role }}</p>
+                  <span class="department-tag">{{ employee.department }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
 
     <!-- Employee Detail Modal -->
@@ -204,6 +206,7 @@ import EmployeeLayout from '@/components/EmployeeLayout.vue';
 import LineChart from '@/components/charts/LineChart.vue';
 import DoughnutChart from '@/components/charts/DoughnutChart.vue';
 import BarChart from '@/components/charts/BarChart.vue';
+import employeeDashboardService from '@/services/employeeDashboardService';
 
 export default {
   name: 'EmployeeDashboard',
@@ -218,77 +221,17 @@ export default {
       employeeName: 'Employee User',
       showModal: false,
       selectedEmployee: {},
-      employees: [
-        {
-          id: 1,
-          name: 'John Doe',
-          role: 'Senior Rental Agent',
-          department: 'Rental Operations',
-          image: 'https://randomuser.me/api/portraits/men/1.jpg',
-          email: 'john.doe@example.com',
-          phone: '(555) 123-4567',
-          joinDate: '2023-03-15',
-          isActive: true,
-          stats: {
-            tasksCompleted: 124,
-            avgRating: 4.8,
-            efficiency: 94
-          }
-        },
-        {
-          id: 2,
-          name: 'Sarah Johnson',
-          role: 'Inventory Specialist',
-          department: 'Inventory Management',
-          image: 'https://randomuser.me/api/portraits/women/2.jpg',
-          email: 'sarah.johnson@example.com',
-          phone: '(555) 234-5678',
-          joinDate: '2023-05-22',
-          isActive: true,
-          stats: {
-            tasksCompleted: 98,
-            avgRating: 4.6,
-            efficiency: 91
-          }
-        },
-        {
-          id: 3,
-          name: 'Michael Chen',
-          role: 'Customer Service Rep',
-          department: 'Customer Support',
-          image: 'https://randomuser.me/api/portraits/men/3.jpg',
-          email: 'michael.chen@example.com',
-          phone: '(555) 345-6789',
-          joinDate: '2024-01-10',
-          isActive: true,
-          stats: {
-            tasksCompleted: 45,
-            avgRating: 4.9,
-            efficiency: 88
-          }
-        },
-        {
-          id: 4,
-          name: 'Amanda Williams',
-          role: 'Team Lead',
-          department: 'Rental Operations',
-          image: 'https://randomuser.me/api/portraits/women/4.jpg',
-          email: 'amanda.williams@example.com',
-          phone: '(555) 456-7890',
-          joinDate: '2022-11-05',
-          isActive: true,
-          stats: {
-            tasksCompleted: 187,
-            avgRating: 4.7,
-            efficiency: 96
-          }
-        }
-      ],
+      employees: [],
+      dashboardTasks: [],
+      dashboardSchedule: [],
+      dashboardRentals: [],
+      isLoading: false,
+      error: null,
       performanceChartData: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        labels: [],
         datasets: [{
           label: 'Performance Score',
-          data: [85, 88, 92, 90, 94],
+          data: [],
           borderColor: '#3490dc',
           backgroundColor: 'rgba(52, 144, 220, 0.1)',
           tension: 0.3,
@@ -296,9 +239,9 @@ export default {
         }]
       },
       taskDistributionData: {
-        labels: ['Pending', 'In Progress', 'Completed', 'Overdue'],
+        labels: [],
         datasets: [{
-          data: [12, 8, 18, 3],
+          data: [],
           backgroundColor: [
             '#fcd34d', // Pending (amber)
             '#60a5fa', // In Progress (blue)
@@ -309,10 +252,10 @@ export default {
         }]
       },
       rentalStatsData: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: [],
         datasets: [{
           label: 'New Rentals',
-          data: [5, 9, 7, 8, 12, 15, 6],
+          data: [],
           backgroundColor: '#8b5cf6', // Purple
         }]
       },
@@ -323,13 +266,75 @@ export default {
     }
   },
   mounted() {
-    // You could fetch employee-specific data here
+    this.loadDashboardData();
+    
+    // Get current user data from localStorage if available
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     if (userData.name) {
       this.employeeName = userData.name;
     }
   },
   methods: {
+    async loadDashboardData() {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        // Call the API to get all dashboard data at once
+        const response = await employeeDashboardService.getAllDashboardData();
+        const data = response.data.data;
+        
+        // Set dashboard tasks
+        this.dashboardTasks = data.tasks;
+        
+        // Set dashboard schedule
+        this.dashboardSchedule = data.schedule;
+        
+        // Set dashboard rentals
+        this.dashboardRentals = data.rentals;
+        
+        // Set team members (employees)
+        this.employees = data.team;
+        
+        // Set chart data
+        this.setPerformanceChartData(data.performance);
+        this.setTaskDistributionData(data.taskDistribution);
+        this.setRentalStatsData(data.rentalStats);
+        
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        this.error = 'There was an error loading your dashboard data. Please try again.';
+        
+        // Show error notification if available
+        if (this.$notifications) {
+          this.$notifications.add({
+            type: 'error',
+            message: 'Failed to load dashboard data'
+          });
+        }
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    setPerformanceChartData(data) {
+      if (data && data.labels && data.datasets) {
+        this.performanceChartData = data;
+      }
+    },
+    
+    setTaskDistributionData(data) {
+      if (data && data.labels && data.datasets) {
+        this.taskDistributionData = data;
+      }
+    },
+    
+    setRentalStatsData(data) {
+      if (data && data.labels && data.datasets) {
+        this.rentalStatsData = data;
+      }
+    },
+    
     getInitials(name) {
       if (!name) return '';
       return name
@@ -338,6 +343,7 @@ export default {
         .join('')
         .toUpperCase();
     },
+    
     formatDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
@@ -347,13 +353,16 @@ export default {
         day: 'numeric'
       }).format(date);
     },
+    
     openEmployeeModal(employee) {
       this.selectedEmployee = { ...employee };
       this.showModal = true;
     },
+    
     closeModal() {
       this.showModal = false;
     },
+    
     viewEmployeeProfile(employee) {
       this.$router.push({ name: 'EmployeeProfile', params: { id: employee.id } });
     }
@@ -366,8 +375,83 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
+  position: relative;
 }
 
+/* Loading state styles */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #3490dc;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error message styles */
+.error-message {
+  grid-column: 1 / -1;
+  background-color: #fee2e2;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  color: #b91c1c;
+}
+
+.error-message i {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.error-message h3 {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+.retry-button {
+  background-color: #b91c1c;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-top: 15px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.retry-button:hover {
+  background-color: #991b1b;
+}
+
+/* Empty state styles */
+.empty-state {
+  color: #94a3b8;
+  text-align: center;
+  padding: 20px 0;
+  font-style: italic;
+}
+
+/* Dashboard card styles */
 .dashboard-card {
   background-color: white;
   border-radius: 8px;
@@ -427,6 +511,11 @@ export default {
 .task-status.pending {
   background-color: #fef3c7;
   color: #92400e;
+}
+
+.task-status.in-progress {
+  background-color: #dbeafe;
+  color: #1e40af;
 }
 
 .task-status.completed {
@@ -761,5 +850,19 @@ export default {
 
 .btn-secondary:hover {
   background-color: #cbd5e1;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .performance-metrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .employee-modal {
+    width: 95%;
+  }
 }
 </style>

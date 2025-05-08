@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\EmployeeTaskController;
+use App\Http\Controllers\Api\EmployeeDashboardController;
 use App\Http\Controllers\AgreementController;
 use App\Models\Category;
 
@@ -85,6 +86,16 @@ Route::get('/employee/tasks', [EmployeeTaskController::class, 'index']);
 Route::get('/employee/tasks/{id}', [EmployeeTaskController::class, 'show']);
 Route::patch('/employee/tasks/{id}/status', [EmployeeTaskController::class, 'updateStatus']);
 Route::post('/employee/tasks/{id}/complete', [EmployeeTaskController::class, 'complete']);
+
+// Employee Dashboard routes
+Route::get('/employee/dashboard/all', [EmployeeDashboardController::class, 'getAll']);
+Route::get('/employee/dashboard/tasks', [EmployeeDashboardController::class, 'getTasks']);
+Route::get('/employee/dashboard/schedule', [EmployeeDashboardController::class, 'getSchedule']);
+Route::get('/employee/dashboard/rentals', [EmployeeDashboardController::class, 'getRentals']);
+Route::get('/employee/dashboard/performance', [EmployeeDashboardController::class, 'getPerformance']);
+Route::get('/employee/dashboard/task-distribution', [EmployeeDashboardController::class, 'getTaskDistribution']);
+Route::get('/employee/dashboard/rental-stats', [EmployeeDashboardController::class, 'getRentalStats']);
+Route::get('/employee/dashboard/team', [EmployeeDashboardController::class, 'getTeam']);
 
 // Debug routes
 Route::get('/debug/categories', function () {
