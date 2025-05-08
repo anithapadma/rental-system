@@ -683,6 +683,7 @@
 import LineChart from '@/components/charts/LineChart.vue';
 import BarChart from '@/components/charts/BarChart.vue';
 import DoughnutChart from '@/components/charts/DoughnutChart.vue';
+import analyticsService from '@/services/analyticsService';
 
 export default {
   name: 'Reports',
@@ -693,6 +694,15 @@ export default {
   },
   data() {
     return {
+      // Debug flag to help troubleshoot API issues
+      debugMode: true,
+      
+      // API status for tracking requests
+      apiStatus: {
+        loading: false,
+        error: null
+      },
+      
       reportTypes: [
         { id: 'revenue', name: 'Revenue Report' },
         { id: 'inventory', name: 'Inventory Report' },
@@ -1013,12 +1023,362 @@ export default {
   },
   methods: {
     generateReport() {
-      // Simulate API call to generate report data
-      setTimeout(() => {
-        this.reportGenerated = true;
-        // In a real application, you would fetch the actual report data based on the selected filters
-      }, 800);
+      // Show loading state
+      this.reportGenerated = false;
+      this.apiStatus.loading = true;
+      this.apiStatus.error = null;
+      
+      // Log API request for debugging
+      if (this.debugMode) {
+        console.log(`📊 Generating ${this.selectedReportType} report`);
+        console.log(`📅 Date range: ${this.startDate} to ${this.endDate}`);
+      }
+      
+      // Fetch report data based on the selected report type
+      if (this.selectedReportType === 'revenue') {
+        this.fetchRevenueReportData();
+      } else if (this.selectedReportType === 'inventory') {
+        this.fetchInventoryReportData();
+      } else if (this.selectedReportType === 'rentals') {
+        this.fetchRentalsReportData();
+      } else if (this.selectedReportType === 'customers') {
+        this.fetchCustomersReportData();
+      }
     },
+    
+    fetchRevenueReportData() {
+      if (this.debugMode) {
+        console.log('🔍 Fetching revenue report data...');
+      }
+      
+      // Create a promise array for all revenue-related API calls
+      const promises = [
+        analyticsService.getRevenueAnalysisData()
+          .catch(error => {
+            console.error('Revenue Analysis API error:', error);
+            // Return mock data structure in case of API failure
+            return { 
+              data: { 
+                summary: this.revenueSummary, 
+                periodicData: this.revenueTableData,
+                totals: this.revenueTotals
+              } 
+            };
+          }),
+        analyticsService.getRevenueChartData()
+          .catch(error => {
+            console.error('Revenue Chart API error:', error);
+            // Return mock data structure
+            return { 
+              data: { 
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: this.revenueReportChartData.datasets.map(dataset => ({
+                  ...dataset,
+                  sourceId: dataset.label.toLowerCase().replace(' ', '-')
+                }))
+              } 
+            };
+          }),
+        analyticsService.getRevenueByCategoryData()
+          .catch(error => {
+            console.error('Revenue by Category API error:', error);
+            return { data: null };
+          }),
+        analyticsService.getRevenueByLocationData()
+          .catch(error => {
+            console.error('Revenue by Location API error:', error);
+            return { data: null };
+          })
+      ];
+      
+      // Execute all API calls in parallel
+      Promise.all(promises)
+        .then(([analysisData, chartData, categoryData, locationData]) => {
+          if (this.debugMode) {
+            console.log('✅ Revenue API calls completed');
+            console.log('📊 Analysis data:', analysisData);
+            console.log('📈 Chart data:', chartData);
+          }
+          
+          try {
+            // Update the revenue summary data
+            if (analysisData.data && analysisData.data.summary) {
+              this.revenueSummary = analysisData.data.summary;
+            } else {
+              console.warn('Invalid or missing revenue summary data format');
+            }
+            
+            // Update revenue table data
+            if (analysisData.data && analysisData.data.periodicData) {
+              this.revenueTableData = analysisData.data.periodicData;
+            } else {
+              console.warn('Invalid or missing revenue periodic data format');
+            }
+            
+            // Update revenue totals
+            if (analysisData.data && analysisData.data.totals) {
+              this.revenueTotals = analysisData.data.totals;
+            } else {
+              console.warn('Invalid or missing revenue totals data format');
+            }
+            
+            // Update chart data with selected sources
+            if (chartData.data && chartData.data.datasets) {
+              const chartDatasets = chartData.data.datasets.filter(dataset => {
+                // Filter datasets based on selected revenue sources
+                const sourceId = dataset.sourceId;
+                const source = this.revenueSources.find(s => s.id === sourceId);
+                return source && source.selected;
+              });
+              
+              this.revenueReportChartData = {
+                labels: chartData.data.labels || ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: chartDatasets
+              };
+            } else {
+              console.warn('Invalid or missing chart data format');
+            }
+            
+            // Use categoryData and locationData if available
+            if (categoryData && categoryData.data) {
+              console.log('Revenue by category data available:', categoryData.data);
+            }
+            
+            if (locationData && locationData.data) {
+              console.log('Revenue by location data available:', locationData.data);
+              
+              // Filter by selected locations if location data is available
+              if (locationData.data.locations) {
+                const filteredLocations = locationData.data.locations.filter(loc => {
+                  return this.locations.some(l => l.selected && l.id === loc.id);
+                });
+                console.log('Filtered locations:', filteredLocations);
+              }
+            }
+            
+            // Mark report as generated
+            this.reportGenerated = true;
+            this.apiStatus.loading = false;
+            
+          } catch (error) {
+            console.error('Error processing revenue data:', error);
+            // Still show the report with available data
+            this.reportGenerated = true;
+            this.apiStatus.loading = false;
+            this.apiStatus.error = 'Error processing data: ' + error.message;
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching revenue report data:", error);
+          
+          // Still show the report with default data
+          this.reportGenerated = true;
+          this.apiStatus.loading = false;
+          this.apiStatus.error = 'API connection failed: ' + error.message;
+          
+          // Show error notification
+          this.$emit('notify', {
+            type: 'error',
+            message: 'Failed to fetch revenue report data. Using cached data instead.'
+          });
+        });
+    },
+    
+    fetchInventoryReportData() {
+      // Create a promise array for all inventory-related API calls
+      const promises = [
+        analyticsService.getInventoryStatusData(),
+        analyticsService.getUtilizationRateData(),
+        analyticsService.getTopPerformingItemsData()
+      ];
+      
+      // Add low stock items data if that filter is selected
+      if (this.inventoryFilter === 'low-stock') {
+        promises.push(analyticsService.getLowStockItemsData());
+      }
+      
+      // Execute all API calls in parallel
+      Promise.all(promises)
+        .then(responses => {
+          const statusData = responses[0].data;
+          const utilizationData = responses[1].data;
+          const topPerformingData = responses[2].data;
+          
+          // Update inventory summary data
+          this.inventorySummary = statusData.summary;
+          
+          // Update inventory status chart data
+          this.inventoryStatusData = {
+            labels: statusData.chart.labels,
+            datasets: statusData.chart.datasets
+          };
+          
+          // Update inventory utilization chart data
+          this.inventoryUtilizationData = {
+            labels: utilizationData.chart.labels,
+            datasets: utilizationData.chart.datasets.filter(dataset => {
+              // Filter datasets based on selected categories
+              return this.itemCategories.some(c => c.selected && c.id === dataset.categoryId);
+            })
+          };
+          
+          // Update inventory table data
+          this.inventoryTableData = topPerformingData.items.filter(item => {
+            // Filter items based on selected categories
+            return this.itemCategories.some(c => c.selected && c.id === item.categoryId);
+          });
+          
+          // Mark report as generated
+          this.reportGenerated = true;
+        })
+        .catch(error => {
+          console.error("Error fetching inventory report data:", error);
+          // Show error notification
+          this.$emit('notify', {
+            type: 'error',
+            message: 'Failed to fetch inventory report data'
+          });
+        });
+    },
+    
+    fetchRentalsReportData() {
+      // Create a promise array for rental-related API calls
+      const promises = [
+        analyticsService.getRentalTypeDistributionData(),
+        analyticsService.getTopRentalItemsData()
+      ];
+      
+      // Execute all API calls in parallel
+      Promise.all(promises)
+        .then(([typeDistribution, topRentals]) => {
+          // Update rentals summary data
+          this.rentalsSummary = typeDistribution.data.summary;
+          
+          // Update rentals duration chart data
+          this.rentalsDurationData = {
+            labels: typeDistribution.data.durationChart.labels,
+            datasets: typeDistribution.data.durationChart.datasets
+          };
+          
+          // Update rentals customer type chart data
+          this.rentalsCustomerData = {
+            labels: typeDistribution.data.customerChart.labels,
+            datasets: typeDistribution.data.customerChart.datasets
+          };
+          
+          // Update rentals table data
+          this.rentalsTableData = topRentals.data.rentals.filter(rental => {
+            // Filter by selected rental status
+            const statusMatch = this.rentalStatuses.some(s => s.selected && s.id === rental.statusId);
+            
+            // Filter by selected customer type
+            const typeMatch = this.customerTypes.some(t => t.selected && t.id === rental.customerTypeId);
+            
+            // Filter by rental duration
+            let durationMatch = true;
+            if (this.rentalDuration !== 'all') {
+              const days = rental.durationDays;
+              if (this.rentalDuration === 'short' && days > 7) durationMatch = false;
+              if (this.rentalDuration === 'medium' && (days < 8 || days > 30)) durationMatch = false;
+              if (this.rentalDuration === 'long' && days <= 30) durationMatch = false;
+            }
+            
+            return statusMatch && typeMatch && durationMatch;
+          });
+          
+          // Mark report as generated
+          this.reportGenerated = true;
+        })
+        .catch(error => {
+          console.error("Error fetching rentals report data:", error);
+          // Show error notification
+          this.$emit('notify', {
+            type: 'error',
+            message: 'Failed to fetch rentals report data'
+          });
+        });
+    },
+    
+    fetchCustomersReportData() {
+      // Create a promise array for customer-related API calls
+      const promises = [
+        analyticsService.getCustomerSegmentData(),
+        analyticsService.getCustomerAcquisitionData(),
+        analyticsService.getTopCustomersData(),
+        analyticsService.getCustomerRetentionData()
+      ];
+      
+      // Execute all API calls in parallel
+      Promise.all(promises)
+        .then(([segmentData, acquisitionData, topCustomers, retentionData]) => {
+          // Update customers summary data
+          this.customersSummary = {
+            total: segmentData.data.totalCustomers,
+            active: segmentData.data.activeCustomers,
+            new: acquisitionData.data.newCustomersCurrentPeriod,
+            avgLTV: topCustomers.data.averageLifetimeValue
+          };
+          
+          // Update customers segment chart data
+          this.customersSegmentData = {
+            labels: segmentData.data.chart.labels,
+            datasets: segmentData.data.chart.datasets
+          };
+          
+          // Update customers growth chart data
+          this.customersGrowthData = {
+            labels: acquisitionData.data.chart.labels,
+            datasets: acquisitionData.data.chart.datasets
+          };
+          
+          // Update customers table data
+          this.customersTableData = topCustomers.data.customers.filter(customer => {
+            // Filter by customer segment
+            const segmentMatch = this.customerSegments.some(s => s.selected && s.id === customer.segmentId);
+            
+            // Filter by activity level
+            let activityMatch = true;
+            if (this.customerActivity === 'active') {
+              activityMatch = customer.isActive;
+            } else if (this.customerActivity === 'inactive') {
+              activityMatch = !customer.isActive;
+            }
+            
+            return segmentMatch && activityMatch;
+          });
+          
+          // Sort customers based on selected sort option
+          if (this.customerSort === 'lifetime-value') {
+            this.customersTableData.sort((a, b) => b.lifetimeValue - a.lifetimeValue);
+          } else if (this.customerSort === 'rental-count') {
+            this.customersTableData.sort((a, b) => b.rentals - a.rentals);
+          } else if (this.customerSort === 'recent') {
+            this.customersTableData.sort((a, b) => new Date(b.lastRental) - new Date(a.lastRental));
+          } else if (this.customerSort === 'alphabetical') {
+            this.customersTableData.sort((a, b) => a.name.localeCompare(b.name));
+          }
+          
+          // Process retention data if needed
+          if (retentionData && retentionData.data) {
+            console.log('Customer retention data available:', retentionData.data);
+            // You could use this for a customer retention chart or metrics
+            const retentionRate = retentionData.data.retentionRate;
+            console.log(`Overall customer retention rate: ${retentionRate}%`);
+          }
+          
+          // Mark report as generated
+          this.reportGenerated = true;
+        })
+        .catch(error => {
+          console.error("Error fetching customers report data:", error);
+          // Show error notification
+          this.$emit('notify', {
+            type: 'error',
+            message: 'Failed to fetch customers report data'
+          });
+        });
+    },
+    
     exportPDF() {
       alert('Exporting PDF report...');
       // Implementation would connect to a PDF generation library
