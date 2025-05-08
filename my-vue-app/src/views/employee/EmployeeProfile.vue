@@ -1,147 +1,145 @@
 <template>
   <employee-layout>
     <div class="employee-profile">
-      <div class="page-header">
-        <h1>Employee Profile</h1>
-        <p>Your personal information and performance statistics</p>
+      <!-- Main header section -->
+      <div class="dashboard-header">
+        <h1>Dashboard</h1>
+        <!-- Notification icon could go here -->
       </div>
-
-      <div class="profile-sections">
-        <div class="employee-profile-container">
-          <header class="page-header">
-            <div class="header-content">
-              <h1 class="page-title">Employee Profile</h1>
-              <div class="header-actions">
-                <button class="btn btn-outline">Edit Profile</button>
-                <button class="btn btn-primary">Save Changes</button>
+      
+      <!-- Profile header section -->
+      <div class="profile-header-section">
+        <div class="profile-title-container">
+          <h1 class="profile-title">Employee Profile</h1>
+          <div class="profile-actions">
+            <button class="btn btn-outline">Edit Profile</button>
+            <button class="btn btn-primary">Save Changes</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Main content area with cards layout -->
+      <div class="profile-content">
+        <!-- Left card with profile details -->
+        <div class="profile-card user-info-card">
+          <div class="profile-center">
+            <div class="profile-avatar">
+              <div class="avatar-circle large">
+                <span>{{ userInitials }}</span>
               </div>
             </div>
-          </header>
-
-          <div class="profile-content">
-            <div class="profile-card">
-              <div class="profile-header">
-                <div class="avatar-container">
-                  <div class="avatar-circle large">
-                    <span>{{ userInitials }}</span>
-                  </div>
-                </div>
-                <div class="profile-info">
-                  <h2 class="employee-name">{{ employeeData.name }}</h2>
-                  <p class="employee-role">{{ employeeData.role }}</p>
-                  <div class="employee-status">
-                    <span class="status-dot active"></span>
-                    <span>Active</span>
-                  </div>
-                </div>
+            <div class="profile-name-container">
+              <h2 class="profile-name">{{ employeeData.name }}</h2>
+              <p class="profile-role">{{ employeeData.role }}</p>
+              <div class="status-indicator">
+                <span class="status-dot active"></span>
+                <span class="status-text">Active</span>
               </div>
-
-              <div class="profile-details">
-                <div class="detail-group">
-                  <div class="detail-item">
-                    <span class="detail-label">Email:</span>
-                    <span class="detail-value">{{ employeeData.email }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Phone:</span>
-                    <span class="detail-value">{{ employeeData.phone }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Department:</span>
-                    <span class="detail-value">{{ employeeData.department }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Joined:</span>
-                    <span class="detail-value">{{ formatDate(employeeData.joinDate) }}</span>
+            </div>
+            
+            <div class="profile-details">
+              <div class="detail-item">
+                <div class="detail-label">Email:</div>
+                <div class="detail-value">{{ employeeData.email }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Phone:</div>
+                <div class="detail-value">{{ employeeData.phone }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Department:</div>
+                <div class="detail-value">{{ employeeData.department }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Joined:</div>
+                <div class="detail-value">{{ formatDate(employeeData.joinDate) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right card with performance stats -->
+        <div class="profile-card stats-card">
+          <h2 class="stats-title">Performance Statistics</h2>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value">{{ employeeData.stats.tasksCompleted }}</div>
+              <div class="stat-label">Tasks Completed</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ employeeData.stats.avgRating }}★</div>
+              <div class="stat-label">Average Rating</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ employeeData.stats.hoursLogged }}h</div>
+              <div class="stat-label">Hours Logged</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ employeeData.stats.efficiency }}%</div>
+              <div class="stat-label">Efficiency</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tabs section for tasks, skills, documents -->
+      <div class="profile-tabs-section">
+        <div class="tabs-container">
+          <div class="tabs-header">
+            <button 
+              v-for="tab in tabs" 
+              :key="tab.id" 
+              :class="['tab-button', { active: activeTab === tab.id }]"
+              @click="activeTab = tab.id"
+            >
+              <i :class="tab.icon"></i>
+              {{ tab.title }}
+            </button>
+          </div>
+          
+          <div class="tab-content-container">
+            <!-- Tasks tab content -->
+            <div v-if="activeTab === 'tasks'" class="tab-content">
+              <h3>Recent Tasks</h3>
+              <div class="task-list">
+                <div v-for="(task, index) in employeeData.recentTasks" :key="index" class="task-item">
+                  <div class="task-status" :class="task.status"></div>
+                  <div class="task-content">
+                    <div class="task-header">
+                      <span class="task-title">{{ task.title }}</span>
+                      <span class="task-date">{{ formatDate(task.date) }}</span>
+                    </div>
+                    <div class="task-description">{{ task.description }}</div>
                   </div>
                 </div>
               </div>
             </div>
-
-            <div class="profile-stats">
-              <div class="stats-card">
-                <div class="stats-header">
-                  <h3>Performance Statistics</h3>
-                </div>
-                <div class="stats-grid">
-                  <div class="stat-item">
-                    <div class="stat-value">{{ employeeData.stats.tasksCompleted }}</div>
-                    <div class="stat-label">Tasks Completed</div>
+            
+            <!-- Skills tab content -->
+            <div v-if="activeTab === 'skills'" class="tab-content">
+              <h3>Skills & Expertise</h3>
+              <div class="skills-container">
+                <div v-for="(skill, index) in employeeData.skills" :key="index" class="skill-item">
+                  <div class="skill-name">{{ skill.name }}</div>
+                  <div class="skill-bar-container">
+                    <div class="skill-bar" :style="{ width: skill.level + '%' }"></div>
                   </div>
-                  <div class="stat-item">
-                    <div class="stat-value">{{ employeeData.stats.avgRating }}★</div>
-                    <div class="stat-label">Average Rating</div>
-                  </div>
-                  <div class="stat-item">
-                    <div class="stat-value">{{ employeeData.stats.hoursLogged }}h</div>
-                    <div class="stat-label">Hours Logged</div>
-                  </div>
-                  <div class="stat-item">
-                    <div class="stat-value">{{ employeeData.stats.efficiency }}%</div>
-                    <div class="stat-label">Efficiency</div>
-                  </div>
+                  <div class="skill-level">{{ skill.level }}%</div>
                 </div>
               </div>
             </div>
-
-            <div class="employee-sections">
-              <div class="section-tabs">
-                <button 
-                  v-for="tab in tabs" 
-                  :key="tab.id" 
-                  :class="['tab-button', { active: activeTab === tab.id }]"
-                  @click="activeTab = tab.id"
-                >
-                  <i :class="tab.icon"></i>
-                  {{ tab.title }}
-                </button>
-              </div>
-
-              <div class="section-content">
-                <!-- Recent Tasks -->
-                <div v-if="activeTab === 'tasks'" class="tab-content">
-                  <h3>Recent Tasks</h3>
-                  <div class="task-list">
-                    <div v-for="(task, index) in employeeData.recentTasks" :key="index" class="task-item">
-                      <div class="task-status" :class="task.status"></div>
-                      <div class="task-content">
-                        <div class="task-header">
-                          <span class="task-title">{{ task.title }}</span>
-                          <span class="task-date">{{ formatDate(task.date) }}</span>
-                        </div>
-                        <div class="task-description">{{ task.description }}</div>
-                      </div>
-                    </div>
+            
+            <!-- Documents tab content -->
+            <div v-if="activeTab === 'documents'" class="tab-content">
+              <h3>Documents & Certifications</h3>
+              <div class="documents-container">
+                <div v-for="(doc, index) in employeeData.documents" :key="index" class="document-item">
+                  <i class="fas fa-file-alt document-icon"></i>
+                  <div class="document-info">
+                    <div class="document-name">{{ doc.name }}</div>
+                    <div class="document-date">Issued: {{ formatDate(doc.issueDate) }}</div>
                   </div>
-                </div>
-
-                <!-- Skills -->
-                <div v-if="activeTab === 'skills'" class="tab-content">
-                  <h3>Skills & Expertise</h3>
-                  <div class="skills-container">
-                    <div v-for="(skill, index) in employeeData.skills" :key="index" class="skill-item">
-                      <div class="skill-name">{{ skill.name }}</div>
-                      <div class="skill-bar-container">
-                        <div class="skill-bar" :style="{ width: skill.level + '%' }"></div>
-                      </div>
-                      <div class="skill-level">{{ skill.level }}%</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Documents -->
-                <div v-if="activeTab === 'documents'" class="tab-content">
-                  <h3>Documents & Certifications</h3>
-                  <div class="documents-container">
-                    <div v-for="(doc, index) in employeeData.documents" :key="index" class="document-item">
-                      <i class="fas fa-file-alt document-icon"></i>
-                      <div class="document-info">
-                        <div class="document-name">{{ doc.name }}</div>
-                        <div class="document-date">Issued: {{ formatDate(doc.issueDate) }}</div>
-                      </div>
-                      <button class="btn btn-outline btn-sm">View</button>
-                    </div>
-                  </div>
+                  <button class="btn btn-outline btn-sm">View</button>
                 </div>
               </div>
             </div>
@@ -249,237 +247,191 @@ export default {
 </script>
 
 <style scoped>
-.employee-profile-container {
+.employee-profile {
+  background-color: #f1f5f9;
+  min-height: 100%;
   padding: 0;
-  height: 100%;
+  width: 100%;
 }
 
-.page-header {
-  background-color: #ffffff;
+.dashboard-header {
+  background-color: white;
+  padding: 20px 24px;
   border-bottom: 1px solid #e5e7eb;
-  padding: 20px 30px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-title {
+.dashboard-header h1 {
   font-size: 1.75rem;
   font-weight: 600;
-  color: #1a365d;
+  color: #1e293b;
   margin: 0;
 }
 
-.header-actions {
+.profile-header-section {
+  background-color: #f1f5f9;
+  padding: 20px 24px;
+}
+
+.profile-title-container {
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+.profile-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
 }
 
-.btn-sm {
-  padding: 5px 10px;
-  font-size: 0.875rem;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-}
-
-.btn-primary:hover {
-  background-color: #2563eb;
-}
-
-.btn-outline {
-  background-color: transparent;
-  color: #3b82f6;
-  border: 1px solid #3b82f6;
-}
-
-.btn-outline:hover {
-  background-color: rgba(59, 130, 246, 0.1);
+.profile-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .profile-content {
-  padding: 24px;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(300px, 400px) 1fr;
   gap: 24px;
-}
-
-@media (min-width: 992px) {
-  .profile-content {
-    grid-template-columns: 1fr 1fr;
-  }
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
 }
 
 .profile-card {
-  background-color: #ffffff;
+  background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  grid-column: span 1;
 }
 
-.profile-header {
-  padding: 24px;
+.user-info-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 24px;
 }
 
-.avatar-container {
-  margin-right: 24px;
+.profile-center {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-avatar {
+  margin-bottom: 16px;
 }
 
 .avatar-circle {
-  width: 60px;
-  height: 60px;
-  background-color: #3b82f6;
+  width: 100px;
+  height: 100px;
+  background-color: #4299e1;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.5rem;
+  font-size: 2.5rem;
   font-weight: 600;
 }
 
-.avatar-circle.large {
-  width: 80px;
-  height: 80px;
-  font-size: 2rem;
+.profile-name-container {
+  margin-bottom: 20px;
 }
 
-.profile-info {
-  flex: 1;
-}
-
-.employee-name {
-  margin: 0 0 4px 0;
+.profile-name {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1a365d;
+  color: #1e293b;
+  margin: 0 0 4px;
 }
 
-.employee-role {
-  margin: 0 0 8px 0;
+.profile-role {
   font-size: 1rem;
   color: #64748b;
+  margin: 0 0 8px;
 }
 
-.employee-status {
+.status-indicator {
   display: flex;
   align-items: center;
-  font-size: 0.875rem;
-  color: #64748b;
+  justify-content: center;
+  gap: 6px;
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  margin-right: 6px;
-  background-color: #cbd5e1;
-}
-
-.status-dot.active {
   background-color: #10b981;
 }
 
+.status-text {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
 .profile-details {
-  padding: 24px;
-}
-
-.detail-group {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-@media (min-width: 768px) {
-  .detail-group {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  width: 100%;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+  margin-top: 20px;
 }
 
 .detail-item {
   display: flex;
-  flex-direction: column;
+  padding: 8px 0;
+  text-align: left;
 }
 
 .detail-label {
+  width: 100px;
   font-size: 0.875rem;
   color: #64748b;
-  margin-bottom: 4px;
-}
-
-.detail-value {
-  font-size: 1rem;
-  color: #0f172a;
   font-weight: 500;
 }
 
-.profile-stats {
-  grid-column: span 1;
+.detail-value {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #334155;
 }
 
 .stats-card {
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  padding: 24px;
 }
 
-.stats-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.stats-header h3 {
-  margin: 0;
+.stats-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1a365d;
+  color: #1e293b;
+  margin: 0 0 24px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  padding: 16px;
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-}
-
-@media (min-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 
 .stat-item {
   text-align: center;
-  padding: 12px;
+  padding: 16px;
   border-radius: 6px;
   background-color: #f8fafc;
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: #3b82f6;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .stat-label {
@@ -487,22 +439,28 @@ export default {
   color: #64748b;
 }
 
-.employee-sections {
-  grid-column: 1 / -1;
-  background-color: #ffffff;
+.profile-tabs-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+}
+
+.tabs-container {
+  background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  margin-top: 24px;
 }
 
-.section-tabs {
+.tabs-header {
   display: flex;
   border-bottom: 1px solid #e5e7eb;
   background-color: #f8fafc;
 }
 
 .tab-button {
-  padding: 16px 20px;
+  padding: 16px 24px;
   background: none;
   border: none;
   cursor: pointer;
@@ -537,7 +495,7 @@ export default {
   background-color: rgba(59, 130, 246, 0.05);
 }
 
-.section-content {
+.tab-content-container {
   padding: 24px;
 }
 
@@ -643,14 +601,8 @@ export default {
 .documents-container {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: repeat(1, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
-}
-
-@media (min-width: 768px) {
-  .documents-container {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .document-item {
@@ -682,8 +634,97 @@ export default {
   color: #64748b;
 }
 
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+}
+
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+.btn-outline:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .profile-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-title-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .profile-actions {
+    width: 100%;
+  }
+  
+  .tabs-header {
+    overflow-x: auto;
+  }
+  
+  .tab-button {
+    padding: 16px 16px;
+    white-space: nowrap;
+  }
+  
+  .documents-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .skill-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .skill-name {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .skill-bar-container {
+    width: 100%;
+  }
+  
+  .skill-level {
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
 }
 </style>

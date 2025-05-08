@@ -8,7 +8,7 @@
       <p class="company-tagline">Professional IT Services</p>
     </div>
     
-    <!-- Login card with animation -->
+    <!-- Login card with animation - removed negative margin -->
     <div class="login-card animate-slide-up" style="margin-top:-95px;">
       <div class="login-header">
         <h2>Welcome Back</h2>

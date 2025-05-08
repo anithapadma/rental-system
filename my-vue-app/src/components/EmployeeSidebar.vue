@@ -52,7 +52,7 @@ export default {
         { path: '/employee/dashboard', label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
         { path: '/employee/inventory', label: 'Inventory', icon: 'fas fa-boxes' },
         { path: '/employee/tasks', label: 'My Tasks', icon: 'fas fa-tasks' },
-        { path: '/employee/profile', label: 'My Profile', icon: 'fas fa-user' }
+        // { path: '/employee/profile', label: 'My Profile', icon: 'fas fa-user' }
       ]
     }
   },
