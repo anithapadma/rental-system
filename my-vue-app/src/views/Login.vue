@@ -9,7 +9,7 @@
     </div>
     
     <!-- Login card with animation - removed negative margin -->
-    <div class="login-card animate-slide-up" style="margin-top:-95px;">
+    <div class="login-card animate-slide-up" style="margin-top:-76px;">
       <div class="login-header">
         <h2>Welcome Back</h2>
         <p>Sign in to your account</p>
@@ -234,6 +234,7 @@ export default {
 <style scoped>
 /* Base styling */
 .login-container {
+  margin-top:-60px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
