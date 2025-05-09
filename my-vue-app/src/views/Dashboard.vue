@@ -104,31 +104,15 @@
           </div>
         </div>
         
-       <!-- Wrapper to align charts in one row -->
-<div style="display: flex; justify-content: space-between; gap: 20px;">
-
-<!-- Inventory Status Chart -->
-<div class="chart-card" style="flex: 1; max-width: 48%;">
-  <div class="chart-header">
-    <h3>Inventory Status</h3>
-  </div>
-  <div class="chart-body">
-    <DoughnutChart :chartData="inventoryStatusData" />
-  </div>
-</div>
-
-<!-- Category Performance Chart -->
-<div class="chart-card" style="flex: 1; max-width: 48%;">
-  <div class="chart-header">
-    <h3>Category Performance</h3>
-  </div>
-  <div class="chart-body">
-    <BarChart :chartData="categoryPerformanceData" />
-  </div>
-</div>
-
-</div>
-
+        <!-- Category Performance Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>Category Performance</h3>
+          </div>
+          <div class="chart-body">
+            <BarChart :chartData="categoryPerformanceData" />
+          </div>
+        </div>
         
       </div>
       
@@ -154,10 +138,10 @@
               </thead>
               <tbody>
                 <tr v-for="(activity, index) in recentActivities" :key="index">
-                  <td>{{ formatDate(activity.date) }}</td>
-                  <td class="customer-cell">{{ activity.customer }}</td>
-                  <td>{{ activity.item }}</td>
-                  <td>
+                  <td style="text-align: left;">{{ formatDate(activity.date) }}</td>                  
+                  <td  style="text-align: left;" class="customer-cell">{{ activity.customer }}</td>
+                  <td style="text-align: left;">{{ activity.item }}</td>
+                  <td style="text-align: left;">
                     <span :class="['status-badge', getStatusClass(activity.status)]">
                       {{ activity.status }}
                     </span>
@@ -169,7 +153,7 @@
         </div>
         
         <!-- Upcoming Deadlines -->
-        <div class="table-card">
+        <!-- <div class="table-card">
           <div class="table-header">
             <h3>Upcoming Deadlines</h3>
             <button class="action-btn">
@@ -190,7 +174,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
     </div>
     
@@ -204,7 +188,7 @@ import Sidebar from '../components/Sidebar.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import LineChart from '../components/charts/LineChart.vue';
 import BarChart from '../components/charts/BarChart.vue';
-import DoughnutChart from '../components/charts/DoughnutChart.vue';
+// Removed DoughnutChart import as it's not being used
 import pageFunctionality from '../mixins/pageFunctionality';
 import adminDashboardService from '../services/adminDashboardService';
 
@@ -214,8 +198,8 @@ export default {
     Sidebar,
     LoadingSpinner,
     LineChart,
-    BarChart,
-    DoughnutChart
+    BarChart
+    // Removed DoughnutChart from components registration
   },
   mixins: [pageFunctionality],
   data() {
@@ -1026,3 +1010,4 @@ tbody tr:last-child td {
   }
 }
 </style>
+`

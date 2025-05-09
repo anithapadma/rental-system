@@ -5,14 +5,15 @@
 </template>
 
 <script>
-import { Chart, ArcElement, DoughnutController, Tooltip, Legend } from 'chart.js';
+import { Chart, ArcElement, DoughnutController, Tooltip, Legend, Filler } from 'chart.js';
 
 // Register required Chart.js components individually
 Chart.register(
   ArcElement,
   DoughnutController,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export default {
@@ -33,41 +34,79 @@ export default {
     };
   },
   mounted() {
+    // Ensure DOM is fully updated before rendering
     this.$nextTick(() => {
-      this.renderChart();
+      // Small delay to ensure the canvas is ready
+      setTimeout(() => {
+        this.renderChart();
+      }, 0);
     });
   },
   watch: {
     chartData: {
       handler() {
-        this.updateChart();
+        // Only update if chart exists
+        if (this.chart) {
+          this.updateChart();
+        } else {
+          this.renderChart();
+        }
       },
       deep: true
     },
     options: {
       handler() {
-        this.updateChart();
+        if (this.chart) {
+          this.updateChart();
+        }
       },
       deep: true
     }
   },
-  methods: {
-    renderChart() {
+  methods: {    renderChart() {
+      // Safety check to ensure component is still mounted
       if (!this.$refs.canvas) {
         console.warn('DoughnutChart: Canvas element not found');
         return;
       }
       
-      const ctx = this.$refs.canvas.getContext('2d');
-      if (!ctx) {
-        console.error('DoughnutChart: Failed to get canvas context');
+      const canvas = this.$refs.canvas;
+      
+      // Make sure canvas is properly sized
+      if (canvas.width === 0 || canvas.height === 0) {
+        // Delay rendering if canvas has no size
+        setTimeout(() => this.renderChart(), 100);
         return;
+      }
+      
+      // Get canvas context
+      let ctx;
+      try {
+        ctx = canvas.getContext('2d');
+        
+        // Test that the context is valid and has the required methods
+        if (!ctx || typeof ctx.save !== 'function' || typeof ctx.clip !== 'function') {
+          console.error('DoughnutChart: Invalid canvas context - missing required methods');
+          return;
+        }
+      } catch (err) {
+        console.error('DoughnutChart: Failed to get canvas context', err);
+        return;
+      }
+      
+      // Destroy previous chart instance if it exists
+      if (this.chart) {
+        try {
+          this.chart.destroy();
+        } catch (err) {
+          console.error('DoughnutChart: Error destroying previous chart instance', err);
+        }
+        this.chart = null;
       }
       
       // Verify and fix chartData to ensure it has proper structure
       const validatedData = this.validateChartData(this.chartData);
-      
-      // Default options with professional styling
+        // Default options with professional styling
       const defaultOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -78,6 +117,12 @@ export default {
             bottom: 5,
             left: 5
           }
+        },
+        // Add events configuration to prevent the 'cannot read properties of undefined (includes)' error
+        events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+        interaction: {
+          mode: 'nearest',
+          intersect: true
         },
         elements: {
           arc: {
@@ -132,36 +177,89 @@ export default {
         cutout: '65%'
       };
       
-      // Ensure the chart is destroyed before creating a new one
-      if (this.chart) {
-        this.chart.destroy();
-      }
-      
       try {
         // Create new chart with safely merged options
         const safeOptions = this.options || {};
         const mergedOptions = this.mergeDeep(defaultOptions, safeOptions);
-        
-        this.chart = new Chart(ctx, {
-          type: 'doughnut',
-          data: validatedData,
-          options: mergedOptions
-        });
-      } catch (error) {
-        console.error('Chart creation error:', error);
-        // Try again with minimum options
-        try {
+          // Test context is still valid before creating chart
+        if (!ctx || typeof ctx.save !== 'function' || typeof ctx.clip !== 'function') {
+          console.error('DoughnutChart: Canvas context lost before chart creation, aborting');
+          return;
+        }
+
+        // Create the chart with error handling
+        try {          // Ensure the options properly handle all properties needed for clipArea
+          const safeOptions = {
+            ...mergedOptions,
+            // Ensure animation is handled properly
+            animation: {
+              duration: 600,
+              onComplete: function() {
+                // Ensure context is valid before any clips are drawn
+                if (ctx && typeof ctx.save === 'function' && typeof ctx.clip === 'function') {
+                  // Context is valid
+                } else {
+                  console.warn('DoughnutChart: Canvas context is invalid in animation callback');
+                }
+              }
+            },
+            // Fix for the "disabled" property issue
+            elements: {
+              ...(mergedOptions.elements || {}),
+              arc: {
+                ...(mergedOptions.elements?.arc || {}),
+                borderWidth: 1
+              }
+            },
+            plugins: {
+              ...(mergedOptions.plugins || {}),
+              // Explicitly define the filler plugin configuration to avoid 'disabled' error
+              filler: {
+                propagate: false,
+                // This is important to avoid the 'disabled' property error
+                drawArea: null  // Let Chart.js use the default implementation
+              }
+            }
+          };
+          
+          // Create a clean new Chart instance
           this.chart = new Chart(ctx, {
             type: 'doughnut',
             data: validatedData,
-            options: {
-              responsive: true,
-              maintainAspectRatio: false
-            }
+            options: safeOptions,
+            plugins: [] // Ensure plugins array is defined
           });
-        } catch (fallbackError) {
-          console.error('Fallback chart creation failed:', fallbackError);
+        } catch (error) {
+          console.error('Chart creation error:', error);
+          // Try again with minimum options after a short delay
+          setTimeout(() => {
+            try {
+              if (ctx && typeof ctx.save === 'function' && typeof ctx.clip === 'function') {
+                this.chart = new Chart(ctx, {
+                  type: 'doughnut',
+                  data: validatedData,
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+                    interaction: {
+                      mode: 'nearest',
+                      intersect: false
+                    },
+                    animation: {
+                      duration: 300 // Shorter animation for fallback
+                    }
+                  },
+                  plugins: []
+                });
+              }
+            } catch (fallbackError) {
+              console.error('Fallback chart creation failed:', fallbackError);
+            }
+          }, 100);
         }
+      } catch (error) {
+        console.error('Chart initialization error:', error);
       }
     },
 
@@ -321,7 +419,6 @@ export default {
         };
       }
     },
-    
     updateChart() {
       if (!this.chart) {
         this.renderChart();
@@ -329,24 +426,62 @@ export default {
       }
       
       try {
+        // Verify canvas and context are still valid
+        if (!this.$refs.canvas) {
+          console.warn('DoughnutChart: Canvas element no longer exists during update');
+          return this.renderChart();
+        }
+        
+        const ctx = this.$refs.canvas.getContext('2d');
+        if (!ctx) {
+          console.error('DoughnutChart: Failed to get canvas context during update');
+          return this.renderChart();
+        }
+        
+        // Test that the context has required methods
+        if (typeof ctx.save !== 'function' || typeof ctx.clip !== 'function') {
+          console.error('DoughnutChart: Canvas context methods missing during update');
+          return this.renderChart();
+        }
+        
         const validatedData = this.validateChartData(this.chartData);
         
-        // Update chart data
-        this.chart.data.labels = validatedData.labels;
-        this.chart.data.datasets = validatedData.datasets;
+        // Ensure proper plugin configuration to avoid the 'disabled' property error
+        if (!this.chart.options.plugins) {
+          this.chart.options.plugins = {};
+        }
         
-        // Update chart
-        this.chart.update();
+        // Make sure filler plugin configuration exists to prevent 'disabled' property errors
+        if (!this.chart.options.plugins.filler) {
+          this.chart.options.plugins.filler = {
+            propagate: false,
+            drawTime: 'beforeDatasetDraw',
+            drawArea: null  // Let Chart.js use the default implementation
+          };
+        }
+        
+        // Update chart data safely
+        this.chart.data = validatedData;
+        
+        // Use 'default' mode instead of 'none' to ensure proper context handling
+        this.chart.update('default');
       } catch (error) {
         console.error('Chart update error:', error);
-        // If update fails, try re-rendering the chart
+        // If update fails, destroy and re-create the chart
         this.$nextTick(() => {
-          this.renderChart();
+          if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+          }
+          setTimeout(() => {
+            this.renderChart();
+          }, 0);
         });
       }
     }
   },
   beforeUnmount() {
+    // Clean up chart instance
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;

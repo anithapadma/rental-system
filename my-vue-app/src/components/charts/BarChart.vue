@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import { Chart, BarElement, BarController, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+import { Chart, BarElement, BarController, CategoryScale, LinearScale, Tooltip, Legend, Filler } from 'chart.js';
 
 // Register required Chart.js components individually
 Chart.register(
@@ -14,7 +14,8 @@ Chart.register(
   CategoryScale,
   LinearScale,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export default {
@@ -35,32 +36,79 @@ export default {
     };
   },
   mounted() {
-    this.renderChart();
+    // Ensure DOM is fully updated before rendering
+    this.$nextTick(() => {
+      // Small delay to ensure the canvas is ready
+      setTimeout(() => {
+        this.renderChart();
+      }, 0);
+    });
   },
   watch: {
     chartData: {
       handler() {
-        this.updateChart();
+        // Only update if chart exists
+        if (this.chart) {
+          this.updateChart();
+        } else {
+          this.renderChart();
+        }
       },
       deep: true
     },
     options: {
       handler() {
-        this.updateChart();
+        if (this.chart) {
+          this.updateChart();
+        }
       },
       deep: true
     }
   },
-  methods: {
-    renderChart() {
-      if (!this.$refs.canvas) return;
+  methods: {    renderChart() {
+      // Safety check to ensure component is still mounted
+      if (!this.$refs.canvas) {
+        console.warn('BarChart: Canvas element not found');
+        return;
+      }
       
-      const ctx = this.$refs.canvas.getContext('2d');
+      const canvas = this.$refs.canvas;
+      
+      // Make sure canvas is properly sized
+      if (canvas.width === 0 || canvas.height === 0) {
+        // Delay rendering if canvas has no size
+        setTimeout(() => this.renderChart(), 100);
+        return;
+      }
+      
+      // Get canvas context
+      let ctx;
+      try {
+        ctx = canvas.getContext('2d');
+        
+        // Test that the context is valid and has the required methods
+        if (!ctx || typeof ctx.save !== 'function' || typeof ctx.clip !== 'function') {
+          console.error('BarChart: Invalid canvas context - missing required methods');
+          return;
+        }
+      } catch (err) {
+        console.error('BarChart: Failed to get canvas context', err);
+        return;
+      }
+      
+      // Destroy previous chart instance if it exists
+      if (this.chart) {
+        try {
+          this.chart.destroy();
+        } catch (err) {
+          console.error('BarChart: Error destroying previous chart instance', err);
+        }
+        this.chart = null;
+      }
       
       // Verify and fix chartData to ensure it has proper structure
       const validatedData = this.validateChartData(this.chartData);
-      
-      // Default options with professional styling
+        // Default options with professional styling
       const defaultOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -71,6 +119,12 @@ export default {
             bottom: 10,
             left: 10
           }
+        },
+        // Add events configuration to prevent the 'cannot read properties of undefined (includes)' error
+        events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+        interaction: {
+          mode: 'nearest',
+          intersect: true
         },
         plugins: {
           legend: {
@@ -129,35 +183,89 @@ export default {
         categoryPercentage: 0.8
       };
       
-      // Ensure the chart is destroyed before creating a new one
-      if (this.chart) {
-        this.chart.destroy();
-      }
-      
       try {
-        // Create new chart with merged options
+        // Create new chart with safely merged options
         const mergedOptions = this.mergeDeep(defaultOptions, this.options || {});
-        
-        this.chart = new Chart(ctx, {
-          type: 'bar',
-          data: validatedData,
-          options: mergedOptions
-        });
-      } catch (error) {
-        console.error('Chart creation error:', error);
-        // Try again with minimum options
-        try {
+          // Test context is still valid before creating chart
+        if (!ctx || typeof ctx.save !== 'function' || typeof ctx.clip !== 'function') {
+          console.error('BarChart: Canvas context lost before chart creation, aborting');
+          return;
+        }
+
+        // Create the chart with error handling
+        try {          // Ensure the options properly handle all properties needed for clipArea
+          const safeOptions = {
+            ...mergedOptions,
+            // Ensure animation is handled properly
+            animation: {
+              duration: 600,
+              onComplete: function() {
+                // Ensure context is valid before any clips are drawn
+                if (ctx && typeof ctx.save === 'function' && typeof ctx.clip === 'function') {
+                  // Context is valid
+                } else {
+                  console.warn('BarChart: Canvas context is invalid in animation callback');
+                }
+              }
+            },
+            // Fix for the "disabled" property issue
+            elements: {
+              ...(mergedOptions.elements || {}),
+              bar: {
+                ...(mergedOptions.elements?.bar || {}),
+                borderWidth: 1
+              }
+            },
+            plugins: {
+              ...(mergedOptions.plugins || {}),
+              // Explicitly define the filler plugin configuration
+              filler: {
+                propagate: true,
+                drawTime: 'beforeDatasetDraw',
+                // This is important to avoid the 'disabled' property error
+                drawArea: null  // Let Chart.js use the default implementation
+              }
+            }
+          };
+          
+          // Create a clean new Chart instance
           this.chart = new Chart(ctx, {
             type: 'bar',
             data: validatedData,
-            options: {
-              responsive: true,
-              maintainAspectRatio: false
-            }
+            options: safeOptions,
+            plugins: [] // Ensure plugins array is defined
           });
-        } catch (fallbackError) {
-          console.error('Fallback chart creation failed:', fallbackError);
+        } catch (error) {
+          console.error('Chart creation error:', error);
+          // Try again with minimum options after a short delay
+          setTimeout(() => {
+            try {
+              if (ctx && typeof ctx.save === 'function' && typeof ctx.clip === 'function') {
+                this.chart = new Chart(ctx, {
+                  type: 'bar',
+                  data: validatedData,
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
+                    interaction: {
+                      mode: 'nearest',
+                      intersect: false
+                    },
+                    animation: {
+                      duration: 300 // Shorter animation for fallback
+                    }
+                  },
+                  plugins: []
+                });
+              }
+            } catch (fallbackError) {
+              console.error('Fallback chart creation failed:', fallbackError);
+            }
+          }, 100);
         }
+      } catch (error) {
+        console.error('Chart initialization error:', error);
       }
     },
 
@@ -201,65 +309,126 @@ export default {
         };
       }
       
-      // Create a deep copy to avoid mutating props
-      const result = JSON.parse(JSON.stringify(data));
-      
-      // Ensure labels exist and are strings
-      if (!result.labels || !Array.isArray(result.labels)) {
-        result.labels = ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'Item 5'];
+      try {
+        // Create a deep copy to avoid mutating props
+        const result = JSON.parse(JSON.stringify(data));
+        
+        // Ensure labels exist and are strings
+        if (!result.labels || !Array.isArray(result.labels)) {
+          result.labels = ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'Item 5'];
+        }
+        
+        // Ensure datasets exist and are properly formatted
+        if (!result.datasets || !Array.isArray(result.datasets)) {
+          result.datasets = [];
+        }
+        
+        result.datasets = result.datasets.map(dataset => {
+          const validDataset = { ...dataset };
+          
+          // Ensure dataset label is a string
+          if (typeof validDataset.label !== 'string') {
+            validDataset.label = 'Data';
+          }
+          
+          // Ensure data is an array
+          if (!Array.isArray(validDataset.data)) {
+            validDataset.data = [0, 0, 0, 0, 0];
+          }
+          
+          // Ensure backgroundColor is valid
+          if (typeof validDataset.backgroundColor !== 'string' && !Array.isArray(validDataset.backgroundColor)) {
+            validDataset.backgroundColor = 'rgba(66, 153, 225, 0.8)';
+          }
+          
+          // Ensure borderColor is valid
+          if (typeof validDataset.borderColor !== 'string' && !Array.isArray(validDataset.borderColor)) {
+            validDataset.borderColor = 'rgba(66, 153, 225, 1)';
+          }
+          
+          return validDataset;
+        });
+        
+        return result;
+      } catch (error) {
+        console.error('Error validating chart data:', error);
+        
+        // Return safe fallback data
+        return {
+          labels: ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'Item 5'],
+          datasets: [{
+            label: 'Data',
+            data: [0, 0, 0, 0, 0],
+            backgroundColor: 'rgba(66, 153, 225, 0.8)',
+            borderColor: 'rgba(66, 153, 225, 1)',
+            borderWidth: 1
+          }]
+        };
       }
-      
-      // Ensure datasets exist and are properly formatted
-      if (!result.datasets || !Array.isArray(result.datasets)) {
-        result.datasets = [];
-      }
-      
-      result.datasets = result.datasets.map(dataset => {
-        const validDataset = { ...dataset };
-        
-        // Ensure dataset label is a string
-        if (typeof validDataset.label !== 'string') {
-          validDataset.label = 'Data';
-        }
-        
-        // Ensure data is an array
-        if (!Array.isArray(validDataset.data)) {
-          validDataset.data = [0, 0, 0, 0, 0];
-        }
-        
-        // Ensure backgroundColor is valid
-        if (typeof validDataset.backgroundColor !== 'string' && !Array.isArray(validDataset.backgroundColor)) {
-          validDataset.backgroundColor = 'rgba(66, 153, 225, 0.8)';
-        }
-        
-        // Ensure borderColor is valid
-        if (typeof validDataset.borderColor !== 'string' && !Array.isArray(validDataset.borderColor)) {
-          validDataset.borderColor = 'rgba(66, 153, 225, 1)';
-        }
-        
-        return validDataset;
-      });
-      
-      return result;
     },
-    
-    updateChart() {
+      updateChart() {
       if (!this.chart) {
         this.renderChart();
         return;
       }
       
       try {
+        // Verify canvas and context are still valid
+        if (!this.$refs.canvas) {
+          console.warn('BarChart: Canvas element no longer exists during update');
+          return this.renderChart();
+        }
+        
+        const ctx = this.$refs.canvas.getContext('2d');
+        if (!ctx) {
+          console.error('BarChart: Failed to get canvas context during update');
+          return this.renderChart();
+        }
+        
+        // Test that the context has required methods
+        if (typeof ctx.save !== 'function' || typeof ctx.clip !== 'function') {
+          console.error('BarChart: Canvas context methods missing during update');
+          return this.renderChart();
+        }
+        
         const validatedData = this.validateChartData(this.chartData);
+        
+        // Ensure proper plugin configuration to avoid the 'disabled' property error
+        if (!this.chart.options.plugins) {
+          this.chart.options.plugins = {};
+        }
+        
+        // Make sure filler plugin configuration exists to prevent 'disabled' property errors
+        if (!this.chart.options.plugins.filler) {
+          this.chart.options.plugins.filler = {
+            propagate: true,
+            drawTime: 'beforeDatasetDraw',
+            drawArea: null  // Let Chart.js use the default implementation
+          };
+        }
+        
+        // Update the chart data
         this.chart.data = validatedData;
-        this.chart.update();
+        
+        // Use 'default' mode instead of 'none' to ensure proper context handling
+        this.chart.update('default');
       } catch (error) {
         console.error('Chart update error:', error);
-        this.renderChart(); // Try re-rendering the chart on update error
+        // If update fails, destroy and re-create the chart
+        this.$nextTick(() => {
+          if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+          }
+          setTimeout(() => {
+            this.renderChart(); 
+          }, 0);
+        });
       }
     }
   },
   beforeUnmount() {
+    // Clean up chart instance
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
